@@ -17,7 +17,6 @@ public class HTTPRaiderExtension implements BurpExtension {
     public void initialize(MontoyaApi montoyaApi) {
         API = montoyaApi;
         API.userInterface().registerSuiteTab("HTTPStreamHacker", new SessionPanel());
-        int a = 1;
     }
 
     @Override

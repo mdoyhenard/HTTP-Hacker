@@ -9,7 +9,7 @@ import java.awt.*;
 
 public class SessionPanel extends JPanel {
 
-    private CustomTabbedPane sessions;
+    private final CustomTabbedPane sessions;
 
     public SessionPanel(){
         super();

@@ -14,8 +14,8 @@ import java.util.function.Consumer;
 
 public class HTTPEditorPanel<T extends Editor> extends JPanel {
 
-    private JLabel name;
-    private T editor;
+    private final JLabel name;
+    private final T editor;
     private final List<Consumer<byte[]>> byteListeners = new ArrayList<>();
 
     public HTTPEditorPanel(String text, T editor){
