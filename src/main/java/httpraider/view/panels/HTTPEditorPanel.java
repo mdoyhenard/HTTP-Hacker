@@ -1,22 +1,15 @@
 package httpraider.view.panels;
 
 import burp.api.montoya.core.ByteArray;
-import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.ui.editor.Editor;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import burp.api.montoya.ui.editor.WebSocketMessageEditor;
-import extension.HTTPRaiderExtension;
-import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 
 import javax.swing.*;
-import javax.swing.text.JTextComponent;
 import java.awt.*;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.function.Consumer;
 
 import static javax.swing.SwingUtilities.invokeLater;
 

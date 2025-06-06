@@ -1,6 +1,5 @@
 package httpraider.controller;
 
-import burp.api.montoya.http.message.requests.HttpRequest;
 import extension.HTTPRaiderContextMenu;
 import extension.HTTPRaiderExtension;
 import httpraider.model.PersistenceManager;

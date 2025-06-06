@@ -2,7 +2,7 @@ package httpraider.controller;
 
 import javax.swing.*;
 
-public interface InspectorTool {
+public interface ToolControllerInterface {
 
     String id();
 

@@ -33,7 +33,6 @@ public class StreamPanel extends JPanel {
 
         inspectorBar = new InspectorBar();
         editorToolsGadget = new EditorToolsPanel();
-        inspectorBar.addTool("EDITOR","Stream Tools",editorToolsGadget);
         add(inspectorBar,BorderLayout.EAST);
 
         proxyRequests = new ArrayList<>();
@@ -158,4 +157,7 @@ public class StreamPanel extends JPanel {
         connectionBar.setState(state);
         if (state == ConnectionBar.State.CONNECTING) clearQueues();
     }
+
+    public InspectorBar getInspectorBar(){ return inspectorBar; }
+
 }

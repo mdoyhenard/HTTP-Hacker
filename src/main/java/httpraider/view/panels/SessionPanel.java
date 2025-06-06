@@ -24,10 +24,6 @@ public class SessionPanel extends JPanel {
     private Component currentStreamComp  = null;
     private int       currentStreamIndex = -1;
 
-    private java.awt.event.ActionListener tabAddedListener;
-    private java.awt.event.ActionListener tabRemovedListener;
-    private java.awt.event.ActionListener tabSelectedListener;
-
 
     public SessionPanel() {
 
@@ -72,34 +68,16 @@ public class SessionPanel extends JPanel {
                 currentStreamComp  = null;
                 showNetwork();
             }
-
-            /* 2. bubble event up if someone registered --------------------- */
-            if (tabRemovedListener != null) {
-                tabRemovedListener.actionPerformed(e);
-            }
         });
     }
 
 
-    /* ------------------------------------------------------------------ */
-    /*  getters used by controllers                                       */
-    /* ------------------------------------------------------------------ */
-
-    public NetworkPanel     getNetworkView()       { return networkView;          }
     public CustomTabbedPane getStreams()           { return streams;              }
-    public Component        getCurrentStreamComp() { return currentStreamComp;    }
-    public int              getCurrentStreamIndex(){ return currentStreamIndex;   }
-
-    /* ------------------------------------------------------------------ */
-    /*  public API                                                        */
-    /* ------------------------------------------------------------------ */
 
     public void removeAllStreamTabs(){
         streams.removeAllTabs();
     }
 
-
-    /** Delegate to CustomTabbedPane so controllers can create “stream n”. */
     public void addStreamTab(String name, StreamPanel streamPanel) {
         streams.addPanelTab(name, streamPanel);
     }
@@ -108,15 +86,10 @@ public class SessionPanel extends JPanel {
         streams.setTabName(name, index);
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  view-switching internals                                          */
-    /* ------------------------------------------------------------------ */
-
-    /** Show Network panel, deselect stream headers, update pseudo-tab.  */
     private void showNetwork() {
-        streams.getModel().clearSelection();          // prevents recursion
+        streams.getModel().clearSelection();
 
-        if (currentStreamIndex != -1 &&                // put panel back
+        if (currentStreamIndex != -1 &&
                 currentStreamIndex < streams.getTabCount()) {
             streams.setComponentAt(currentStreamIndex, currentStreamComp);
         }
@@ -130,9 +103,8 @@ public class SessionPanel extends JPanel {
         netHdr.setSelected(true);
     }
 
-    /** Show {@link #currentStreamComp} in the big centre area. */
     private void showStream() {
-        streams.setComponentAt(currentStreamIndex, new JPanel());  // placeholder
+        streams.setComponentAt(currentStreamIndex, new JPanel());
 
         currentStreamComp.setVisible(true);
         currentStreamComp.setEnabled(true);
@@ -143,11 +115,6 @@ public class SessionPanel extends JPanel {
         netHdr.setSelected(false);
     }
 
-    /* ------------------------------------------------------------------ */
-    /*  small helper classes                                              */
-    /* ------------------------------------------------------------------ */
-
-    /** Holds stream headers (¾) and the Network header (¼). */
     private class HeaderStrip extends JPanel {
         HeaderStrip() { super(null); setOpaque(false); }
         @Override public Dimension getPreferredSize() { return new Dimension(0, TAB_HEIGHT); }
@@ -160,7 +127,6 @@ public class SessionPanel extends JPanel {
         }
     }
 
-    /** Custom-painted pseudo-tab for the Network view. */
     private class NetworkHeader extends JComponent {
         private final Font bold;
         private boolean    selected;

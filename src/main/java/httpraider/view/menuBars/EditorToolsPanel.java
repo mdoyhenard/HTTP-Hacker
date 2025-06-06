@@ -13,11 +13,6 @@ import java.awt.event.ActionListener;
 
 public class EditorToolsPanel extends JPanel {
 
-    /* ── action-command constants ─────────────────────────────────────────── */
-    public static final String ACTION_HEX_CHANGED  = "HEX_CHANGED";
-    public static final String ACTION_ASCII_CHANGED= "ASCII_CHANGED";
-    public static final String ACTION_REPEAT_CHANGED = "REPEAT_CHANGED";
-
     /* ── ui components ────────────────────────────────────────────────────── */
     private final JLabel     selectedLabel   = new JLabel("Selected: 0 (0x0)");
     private final JButton    generateClBtn   = new JButton("Generate CL");

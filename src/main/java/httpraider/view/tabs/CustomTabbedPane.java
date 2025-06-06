@@ -1,13 +1,10 @@
 package httpraider.view.tabs;
 
-import burp.api.montoya.http.message.requests.HttpRequest;
-
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
-import java.util.function.Supplier;
 
 public class CustomTabbedPane extends JTabbedPane {
 
