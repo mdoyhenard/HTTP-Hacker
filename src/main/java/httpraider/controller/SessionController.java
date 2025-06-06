@@ -2,70 +2,78 @@ package httpraider.controller;
 
 import httpraider.model.Session;
 import httpraider.model.Stream;
-import httpraider.model.PersistenceManager;
-import httpraider.view.panels.SessionPanel;
 import httpraider.view.panels.StreamPanel;
-import httpraider.view.tabs.MultiTabbedPane;
+import httpraider.view.panels.SessionPanel;
 
-import javax.swing.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * One instance per *session* tab.
- */
-public class SessionController extends AbstractController<Session, SessionPanel> {
+public final class SessionController extends AbstractUIController<Session, SessionPanel> {
 
     private final List<StreamController> streamControllers = new ArrayList<>();
+    private int nameSuffix;
 
-    public SessionController(Session session) {
-        super(session, new SessionPanel());
+    public SessionController(Session model, SessionPanel sessionPanel) {
+        super(model, sessionPanel);
+        nameSuffix = model.getNameSuffix();
+        view.getStreams().addPlusMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                addStreamTab();
+            }
+        });
+        view.getStreams().addTabRemovedListener(e -> {removeStreamTab((int) e.getSource());});
+        updateFromModel();
     }
 
-    @Override
-    protected void wireView() {
-        JTabbedPane tabs = view.getSessionsTabbedPane();                       // :contentReference[oaicite:0]{index=0}
-
-        /* add an empty (untitled) tab on construction so the user lands in a stream */
-        addStreamTab("Stream-1");
-
-        /* react to the little [+] button of CustomTabbedPane (already wired in CustomTabbedPane) */
-     /*   tabs.setTabAddedListener(e -> addStreamTab("Stream-" + (tabs.getTabCount()+1)));
-
-        *//* clean-up when a stream tab gets closed *//*
-        tabs.setTabRemovedListener(e -> {
-            int idx = tabs.indexOfTabComponent((java.awt.Component) e.getSource());
-            if (idx >= 0) streamControllers.remove(idx).dispose();
-        });*/
+    public void updateFromModel(){
+        streamControllers.clear();
+        view.removeAllStreamTabs();
+        for (Stream streamModel : model.getStreams()){
+            StreamPanel streamPanel = new StreamPanel();
+            StreamController streamCtl = new StreamController(streamModel, streamPanel);
+            streamControllers.add(streamCtl);
+            view.addStreamTab(streamModel.getName(), streamPanel);
+        }
+        if (streamControllers.isEmpty()) addStreamTab();
     }
 
-    /* ---------- public API ---------------------------------------------- */
-
-    public void saveToDisk() {
-        PersistenceManager.save(model.getId(), model);                         // :contentReference[oaicite:1]{index=1}
+    public StreamController getLastStreamController(){
+        return streamControllers.get(streamControllers.size()-1);
     }
 
-    public void loadFromDisk() {
-        PersistenceManager.load(model.getId(), Session.class)
-                .ifPresent(saved -> model.getStreams()
-                        .addAll(saved.getStreams()));
+    public void setName(String name){
+        model.setName(name);
     }
 
-    /* ---------- helpers -------------------------------------------------- */
-
-    private void addStreamTab(String title) {
-        Stream       streamM  = new Stream();                                  // :contentReference[oaicite:2]{index=2}
-        StreamPanel  streamV  = new StreamPanel();                             // :contentReference[oaicite:3]{index=3}
-        StreamController sc   = new StreamController(streamM, streamV);
-        streamControllers.add(sc);
-
-        /* tell the model */
-        model.addStream(streamM);
-
-        /* tell the UI */
-        MultiTabbedPane pane = (MultiTabbedPane) view.getSessionsTabbedPane()
-                .getComponentAt(view.getSessionsTabbedPane()
-                        .getTabCount()-1);
-        pane.addClosableTab(title, streamV);                                   // :contentReference[oaicite:4]{index=4}
+    public String getName(){
+        return model.getName();
     }
+
+    public void setStreamName(String name, int index){
+        model.getStreams().get(index).setName(name);
+        view.setStreamTabName(name, index);
+    }
+
+    public void addStreamTab() {
+        Stream streamModel = new Stream("Stream " + nameSuffix++);
+        model.setNameSuffix(nameSuffix);
+        addStreamTab(streamModel);
+    }
+
+    private void addStreamTab(Stream streamModel) {
+        StreamPanel streamPanel = new StreamPanel();
+        StreamController streamCtl = new StreamController(streamModel, streamPanel);
+        model.addStream(streamModel);
+        streamControllers.add(streamCtl);
+        view.addStreamTab(streamModel.getName(), streamPanel);
+    }
+
+    private void removeStreamTab(int streamIndex) {
+        model.removeStream(streamControllers.get(streamIndex).model);
+        streamControllers.remove(streamIndex);
+    }
+
 }

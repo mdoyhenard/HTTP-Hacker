@@ -22,6 +22,14 @@ public final class PersistenceManager {
         }
     }
 
+    public static void saveInt(String key, int value) {
+        HTTPRaiderExtension.API.persistence().extensionData().setInteger(key, value);
+    }
+
+    public static int loadInt(String key) {
+        return HTTPRaiderExtension.API.persistence().extensionData().getInteger(key);
+    }
+
     public static <T extends Serializable> Optional<T> load(String key, Class<T> type) {
         ByteArray rawData = HTTPRaiderExtension.API.persistence().extensionData().getByteArray(key);
         if (rawData == null) return Optional.empty();
@@ -34,4 +42,6 @@ public final class PersistenceManager {
             return Optional.empty();
         }
     }
+
+
 }

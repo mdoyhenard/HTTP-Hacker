@@ -9,10 +9,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.text.AbstractDocument;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.util.ArrayList;
-import java.util.List;
 
 public class EditorToolsPanel extends JPanel {
 
@@ -32,20 +29,13 @@ public class EditorToolsPanel extends JPanel {
 
     private boolean internalUpdate = false;
 
-    /* listener fan-out */
-    private final List<ActionListener> actionListeners = new ArrayList<>();
-
     public EditorToolsPanel() {
         super(new GridBagLayout());
         setBorder(new EmptyBorder(8, 10, 8, 10));
 
-        ((AbstractDocument) hexField   .getDocument()).setDocumentFilter(new HexDocumentFilter());
+        ((AbstractDocument) hexField.getDocument()).setDocumentFilter(new HexDocumentFilter());
         ((AbstractDocument) repeatField.getDocument()).setDocumentFilter(new DigitDocumentFilter());
 
-        /* propagate text changes */
-        hexField.getDocument().addDocumentListener(textChangeListener(ACTION_HEX_CHANGED));
-        asciiField.getDocument().addDocumentListener(textChangeListener(ACTION_ASCII_CHANGED));
-        repeatField.getDocument().addDocumentListener(textChangeListener(ACTION_REPEAT_CHANGED));
 
         /* keep internal conversions */
         hexField.getDocument().addDocumentListener(new DocumentListener() {
@@ -93,19 +83,6 @@ public class EditorToolsPanel extends JPanel {
 
     /* ── helpers ─────────────────────────────────────────────────────────── */
 
-    private void fireAction(String cmd) {
-        ActionEvent ev = new ActionEvent(this, ActionEvent.ACTION_PERFORMED, cmd);
-        for (ActionListener l : List.copyOf(actionListeners))
-            l.actionPerformed(ev);
-    }
-
-    private DocumentListener textChangeListener(String cmd) {
-        return new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { if(!internalUpdate) fireAction(cmd); }
-            @Override public void removeUpdate(DocumentEvent e) { if(!internalUpdate) fireAction(cmd); }
-            @Override public void changedUpdate(DocumentEvent e) { if(!internalUpdate) fireAction(cmd); }
-        };
-    }
 
     private void syncFromAscii() {
         if (internalUpdate) return;
@@ -120,7 +97,6 @@ public class EditorToolsPanel extends JPanel {
 
     private void syncFromHex() {
         if (internalUpdate) return;
-
         String raw = hexField.getText().replaceAll("\\s+", "");
         String spaced = insertSpaces(raw);                 // always re-space
 

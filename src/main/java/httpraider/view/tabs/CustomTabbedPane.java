@@ -1,101 +1,97 @@
 package httpraider.view.tabs;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.util.function.Supplier;
+import burp.api.montoya.http.message.requests.HttpRequest;
+
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.function.Supplier;
 
-/**
- * JTabbedPane with closable tabs, a “+” pseudo-tab, and a pluggable
- * component factory.  The automatically numbered tabs use the
- * baseName provided in the constructor.
- */
 public class CustomTabbedPane extends JTabbedPane {
 
     private final Component plusDummy = new JPanel();
-    private final Supplier<Component> newTabFactory;
-    private final String baseName;                // ← NEW
-    private int untitledCount = 1;
-    private ActionListener tabAddedListener;
-    private ActionListener tabRemovedListener;
-    private ActionListener tabSelectedListener;
+    private JPanel plusButton;
+
+    private ArrayList<ActionListener> tabRemoveListener;
+    private ArrayList<ActionListener> tabSelectedListener;
 
 
-    public CustomTabbedPane(String name, Supplier<Component> factory) {
-        super();
-        baseName = name;
-        newTabFactory = factory;
-        addPlusTab();
-    }
-
-    public CustomTabbedPane(BasicTabbedPaneUI ui,String name, Supplier<Component> factory) {
+    public CustomTabbedPane(BasicTabbedPaneUI ui) {
         super(TOP, JTabbedPane.SCROLL_TAB_LAYOUT);
         setUI(ui);
-        baseName = name;
-        newTabFactory = factory;
+        tabRemoveListener = new ArrayList<>();
+        tabSelectedListener = new ArrayList<>();
         addPlusTab();
     }
 
-    public void setTabAddedListener(ActionListener l) { tabAddedListener = l; }
-    public void setTabSelectedListener(ActionListener l) { tabSelectedListener = l; }
-    public void setTabRemovedListener(ActionListener l) { tabRemovedListener = l; }
+    public void addTabSelectedListener(ActionListener l) {
+            tabSelectedListener.add(l);
+    }
+
+    public void addTabRemovedListener(ActionListener l) {
+            tabRemoveListener.add(l);
+    }
+
+    public void removeAllTabs(){
+        while (getTabCount() > 1) removeTabAt(0);
+    }
+
 
     @Override
     public void setSelectedIndex(int idx) {
         if (idx == getTabCount() - 1) {
-            addUntitledTab();
             return;
         }
         super.setSelectedIndex(idx);
 
-        /* NEW: notify only after the super-call, so getComponentAt(idx) is up-to-date */
-        if (tabSelectedListener != null) {
-            tabSelectedListener.actionPerformed(
-                    new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "tab-selected"));
+        for (ActionListener listener : tabSelectedListener){
+            listener.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "tab-selected"));
         }
     }
 
-
-    public void addClosableTab(String title, Component content) {
-        int plusIndex = getTabCount() - 1;
-        insertTab(null, null, content, null, plusIndex);
-        setTabComponentAt(plusIndex, new HeaderComponent(title));
-        setSelectedIndex(plusIndex);
-
-        if (tabAddedListener != null) {
-            tabAddedListener.actionPerformed(
-                    new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "tab-added"));
-        }
-    }
-
-    public void addUntitledTab() {
-        addClosableTab(baseName + " " + untitledCount++, newTabFactory.get());
-    }
-
-    /* =========================================================  “ + ” TAB  */
-
-    private void addPlusTab() {
-        addTab(null, plusDummy);
-
-        JPanel plusHeader = new JPanel(null) {
-            @Override public Dimension getPreferredSize() { return new Dimension(28, 25); }
-        };
-        plusHeader.setOpaque(false);
-        plusHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        JLabel plusLabel = new JLabel("+", SwingConstants.CENTER);
-        plusLabel.setBorder(BorderFactory.createEmptyBorder(2, 8, 6, 8));
-        plusHeader.add(plusLabel);
-
-        plusHeader.addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) { addUntitledTab(); }
+    public void addPanelTab(String name, JPanel content) {
+        SwingUtilities.invokeLater(() -> {
+            int lastIndex = Math.max(0, getTabCount() - 1);
+            insertTab(null, null, content, null, lastIndex);
+            setTabComponentAt(lastIndex, new HeaderComponent(name));
+            setSelectedIndex(lastIndex);
         });
-        setTabComponentAt(indexOfComponent(plusDummy), plusHeader);
     }
 
-    /* keep the “+” centred */
-    @Override public void doLayout() {
+    public void addPlusMouseListener(MouseListener l){
+        plusButton.addMouseListener(l);
+    }
+
+    public void setTabName(String name, int index){
+        ((HeaderComponent) getTabComponentAt(index)).setHeaderName(name);
+    }
+
+    /* ── internal helpers ──────────────────────────────────────────────── */
+
+    /** Builds the “+” pseudo-tab. */
+    private void addPlusTab() {
+            addTab(null, plusDummy);
+
+            plusButton = new JPanel(null) {
+                @Override
+                public Dimension getPreferredSize() {
+                    return new Dimension(18, 18);
+                }
+            };
+            plusButton.setOpaque(false);
+            plusButton.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+            JLabel plusLabel = new JLabel("+", SwingConstants.CENTER);
+            plusLabel.setBorder(BorderFactory.createEmptyBorder(2, 8, 6, 8));
+            plusButton.add(plusLabel);
+            setTabComponentAt(indexOfComponent(plusDummy), plusButton);
+    }
+
+    /* Keep the “+” centred when the tabs scroll. */
+    @Override
+    public void doLayout() {
         super.doLayout();
         int idx = indexOfComponent(plusDummy);
         if (idx >= 0) {
@@ -104,16 +100,15 @@ public class CustomTabbedPane extends JTabbedPane {
                 Component child = p.getComponent(0);
                 Dimension sz = p.getSize();
                 Dimension cp = child.getPreferredSize();
-                child.setBounds((sz.width - cp.width)/2,
-                        (sz.height - cp.height)/2,
+                child.setBounds((sz.width - cp.width) / 2,
+                        (sz.height - cp.height) / 2,
                         cp.width, cp.height);
             }
         }
     }
 
-    /* ====================================================  I N N E R   C L A S S  */
+    /* ── inner class: title + close button ─────────────────────────────── */
 
-    /** Header component (title + close button) for a closable tab. */
     private class HeaderComponent extends JPanel {
         private final JLabel  lbl;
         private final JButton close;
@@ -131,41 +126,40 @@ public class CustomTabbedPane extends JTabbedPane {
             close.setContentAreaFilled(false);
             close.setOpaque(false);
             close.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            close.setMargin(new Insets(0,0,0,0));
+            close.setMargin(new Insets(0, 0, 0, 0));
             close.setFocusable(false);
 
             close.addActionListener(e -> {
-                if (tabRemovedListener != null) {
-                    tabRemovedListener.actionPerformed(
-                            new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "tab-removed"));
-                }
-                int i = indexOfTabComponent(HeaderComponent.this);
-                removeTabAt(i);
+                int index = indexOfTabComponent(HeaderComponent.this);
+                removeTabAt(index);
 
-                if (getTabCount() == 1) {
-                    setSelectedIndex(0);
-                    return;
+                for (ActionListener listener : tabRemoveListener){
+                    listener.actionPerformed(new ActionEvent(index, ActionEvent.ACTION_PERFORMED, "tab-removed"));
                 }
-                if (getSelectedIndex()==getTabCount()-1){
-                    setSelectedIndex(getSelectedIndex()-1);
-                    return;
-                }
-
-                setSelectedIndex(getSelectedIndex());
             });
             add(close);
         }
 
-        @Override public Dimension getPreferredSize() {
+        public void setHeaderName(String name){
+            lbl.setText(name);
+        }
+
+        /* preferred size = title + button + padding */
+        @Override
+        public Dimension getPreferredSize() {
             Dimension lt = lbl.getPreferredSize();
             Dimension bt = close.getPreferredSize();
             int w = lt.width + bt.width + 14;
             int h = Math.max(lt.height, bt.height) + 4;
             return new Dimension(w, h);
         }
-        @Override public void doLayout() {
+
+        /* manual layout: label left, “×” right */
+        @Override
+        public void doLayout() {
             Dimension lt = lbl.getPreferredSize();
             lbl.setBounds(4, 0, lt.width, getHeight());
+
             Dimension bt = close.getPreferredSize();
             int bx = getWidth() - bt.width + 5;
             close.setBounds(bx, -3, bt.width, bt.height);

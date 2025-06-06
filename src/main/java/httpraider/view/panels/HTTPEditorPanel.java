@@ -8,15 +8,17 @@ import burp.api.montoya.ui.editor.WebSocketMessageEditor;
 
 import javax.swing.*;
 import java.awt.*;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.function.Consumer;
+
+import static javax.swing.SwingUtilities.invokeLater;
 
 public class HTTPEditorPanel<T extends Editor> extends JPanel {
 
     private final JLabel name;
     private final T editor;
-    private final List<Consumer<byte[]>> byteListeners = new ArrayList<>();
 
     public HTTPEditorPanel(String text, T editor){
         super(new BorderLayout());
@@ -28,9 +30,9 @@ public class HTTPEditorPanel<T extends Editor> extends JPanel {
         add(this.editor.uiComponent(), BorderLayout.CENTER);
     }
 
-    public T getEditor(){ return editor; }
+    private T getEditor(){ return editor; }
 
-    public Component getUiComponent(){ return editor.uiComponent(); }
+    private Component getUiComponent(){ return editor.uiComponent(); }
 
     public void setName(String text){ name.setText(text); }
 
@@ -39,16 +41,26 @@ public class HTTPEditorPanel<T extends Editor> extends JPanel {
     }
 
     public void setBytes(byte[] data){
+        invokeLater(() -> {
+            if (editor instanceof HttpRequestEditor)
+                ((HttpRequestEditor)editor).setRequest(HttpRequest.httpRequest(((HttpRequestEditor) editor).getRequest().httpService(), ByteArray.byteArray(data)));
+            else
+                ((WebSocketMessageEditor)editor).setContents(ByteArray.byteArray(data));
+        });
+    }
+
+    public void addBytes(byte[] data){
+        byte[] concat;
         if (editor instanceof HttpRequestEditor)
-            ((HttpRequestEditor)editor).setRequest(HttpRequest.httpRequest(((HttpRequestEditor) editor).getRequest().httpService(), ByteArray.byteArray(data)));
+            concat = ByteBuffer.allocate(((HttpRequestEditor)editor).getRequest().toByteArray().getBytes().length + data.length).put(((HttpRequestEditor)editor).getRequest().toByteArray().getBytes()).put(data).array();
         else
-            ((WebSocketMessageEditor)editor).setContents(ByteArray.byteArray(data));
-        notifyByteListeners(data);
+            concat = ByteBuffer.allocate(((WebSocketMessageEditor)editor).getContents().getBytes().length + data.length).put(((WebSocketMessageEditor)editor).getContents().getBytes()).put(data).array();
+
+        setBytes(concat);
     }
 
-    public void addByteListener(Consumer<byte[]> l){ byteListeners.add(l); }
-
-    private void notifyByteListeners(byte[] data){
-        for(Consumer<byte[]> l: byteListeners) l.accept(data);
+    public void clear(){
+        setBytes(new byte[0]);
     }
+
 }

@@ -1,6 +1,5 @@
 package extension;
 
-import httpraider.view.panels.SessionPanel;
 import burp.api.montoya.BurpExtension;
 import burp.api.montoya.EnhancedCapability;
 import burp.api.montoya.MontoyaApi;
@@ -16,7 +15,7 @@ public class HTTPRaiderExtension implements BurpExtension {
     @Override
     public void initialize(MontoyaApi montoyaApi) {
         API = montoyaApi;
-        API.userInterface().registerSuiteTab("HTTPStreamHacker", new SessionPanel());
+        new httpraider.controller.ApplicationController();
     }
 
     @Override

@@ -10,7 +10,6 @@ import java.util.Map;
 
 public final class InspectorBar extends JPanel {
 
-    /* colours ------------------------------------------------------------------ */
     private static final Color STRIP_BG        = new Color(0xF5F5F5);
     private static final Color STRIP_LINE      = new Color(0xC8C8C8);
     private static final Color HEADER_BG       = STRIP_BG;
@@ -18,7 +17,6 @@ public final class InspectorBar extends JPanel {
     private static final Color HEADER_BG_SEL   = new Color(0x35B8CBDC, true);   // ★ lighter blue
     private static final int   STRIP_WIDTH     = 32;
 
-    /* ui parts ------------------------------------------------------------------ */
     private final JPanel              strip   = new JPanel();
     private final CardLayout          cardsCL = new CardLayout();
     private final JPanel              cards   = new JPanel(cardsCL);
@@ -34,10 +32,8 @@ public final class InspectorBar extends JPanel {
         strip.setBorder(new MatteBorder(0, 1, 0, 0, STRIP_LINE));
         strip.setLayout(new BoxLayout(strip, BoxLayout.Y_AXIS));
 
-        add(strip, BorderLayout.EAST);   // strip always visible
+        add(strip, BorderLayout.EAST);
     }
-
-    /* ---------- public api ----------------------------------------------------- */
 
     public void addTool(String id, String displayName, JComponent toolPanel) {
         Header h = new Header(displayName);

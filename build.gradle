@@ -8,5 +8,5 @@ repositories {
 }
 
 dependencies {
-    implementation 'net.portswigger.burp.extensions:montoya-api:2025.4'
+    implementation 'net.portswigger.burp.extensions:montoya-api:2025.5'
 }
