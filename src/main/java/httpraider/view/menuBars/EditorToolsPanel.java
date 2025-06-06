@@ -53,6 +53,10 @@ public class EditorToolsPanel extends JPanel {
         buildLayout();
     }
 
+    public String getAsciiText() {
+        return asciiField.getText();
+    }
+
     public void setInsertStringActionListener(ActionListener l){
         insertBtn.addActionListener(l);
     }

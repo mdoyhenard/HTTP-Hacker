@@ -1,10 +1,14 @@
 package httpraider.controller;
 
+import burp.api.montoya.core.ByteArray;
 import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.message.requests.HttpRequest;
+import burp.api.montoya.ui.editor.HttpRequestEditor;
 import httpraider.model.ConnectionSettings;
 import httpraider.model.Stream;
 import httpraider.view.menuBars.ConnectionBar;
+import httpraider.view.menuBars.EditorToolsPanel;
+import httpraider.view.panels.HTTPEditorPanel;
 import httpraider.view.panels.StreamPanel;
 
 import javax.net.ssl.*;
@@ -12,6 +16,7 @@ import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 
@@ -24,13 +29,56 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
     private ByteArrayOutputStream response;
     private final Object responseLock = new Object();
 
+    private final Timer selTimer;
+    private int lastSelectionLen = -1;
+
     public StreamController(Stream model, StreamPanel view) {
         super(model, view);
         state = ConnectionBar.State.DISCONNECTED;
         updateFromModel();
 
+        EditorToolsPanel tools = view.getEditorToolsPanel();
+        selTimer = new Timer(50, ev -> updateSelectedLabel());
+        selTimer.start();
+        tools.setInsertStringActionListener(this::insertAtCaret);
+
         view.getConnectionBar().setSendActionListener(this::sendAction);
         view.getConnectionBar().setDisconnectActionListener(this::disconnectAction);
+    }
+
+    private void updateSelectedLabel() {
+        int len = view.getClientRequestEditor().getSelection()
+                .map(sel -> sel.contents().getBytes().length)
+                .orElse(0);
+
+        if (len != lastSelectionLen) {                 // avoid needless repaint
+            view.getEditorToolsPanel().setSelectedBytes(len);
+            lastSelectionLen = len;
+        }
+    }
+
+    private void insertAtCaret(ActionEvent e) {
+        EditorToolsPanel tools = view.getEditorToolsPanel();
+        String ascii   = tools.getAsciiText();
+        if (ascii.isEmpty())
+            return;                                    // nothing to insert
+
+        int repeat     = tools.getRepeatCount();
+        byte[] toWrite = ascii.repeat(repeat).getBytes(StandardCharsets.ISO_8859_1);
+
+        HTTPEditorPanel<HttpRequestEditor> panel = view.getClientRequestEditor();
+
+        byte[] original = panel.getBytes();
+        int caret = Math.max(0, Math.min(panel.getCaretPosition(), original.length));
+
+        byte[] patched  = new byte[original.length + toWrite.length];
+        System.arraycopy(original, 0, patched, 0, caret);
+        System.arraycopy(toWrite, 0, patched, caret, toWrite.length);
+        System.arraycopy(original, caret, patched, caret+toWrite.length, original.length-caret);
+
+        int pos = panel.getCaretPosition()+toWrite.length;
+        panel.setBytes(patched);
+        panel.setCaretPosition(pos);
     }
 
     public void setName(String name){
@@ -170,9 +218,12 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
 
     private void startReading() {
         Timer updateTimer = new Timer(20, e -> {
+            int pos = view.getResponseQueueBytes().length;
             view.setResponseQueue(response.toByteArray());
+            view.setResponseQueueCaretPosition(pos);
         });
         updateTimer.setRepeats(false);
+        view.setResponseHTTPsearch();
 
         Thread readThread = new Thread(() -> {
             byte[] buffer = new byte[8192];
@@ -192,7 +243,9 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
             } finally {
                 synchronized(responseLock) {
                     if (response.size() > 0) {
+                        int pos = view.getResponseQueueBytes().length;
                         view.setResponseQueue(response.toByteArray());
+                        view.setResponseQueueCaretPosition(pos);
                     }
                 }
                 if (state == ConnectionBar.State.CONNECTED) disconnect();

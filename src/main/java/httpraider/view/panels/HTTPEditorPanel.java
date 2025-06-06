@@ -1,13 +1,18 @@
 package httpraider.view.panels;
 
 import burp.api.montoya.core.ByteArray;
+import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.ui.editor.Editor;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import burp.api.montoya.ui.editor.WebSocketMessageEditor;
+import extension.HTTPRaiderExtension;
+import org.fife.ui.rsyntaxtextarea.RSyntaxTextArea;
 
 import javax.swing.*;
+import javax.swing.text.JTextComponent;
 import java.awt.*;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.ArrayList;
@@ -36,6 +41,10 @@ public class HTTPEditorPanel<T extends Editor> extends JPanel {
 
     public void setName(String text){ name.setText(text); }
 
+    public java.util.Optional<burp.api.montoya.ui.Selection> getSelection(){
+        return editor.selection();
+    }
+
     public byte[] getBytes(){
         return (editor instanceof HttpRequestEditor) ? ((HttpRequestEditor)editor).getRequest().toByteArray().getBytes() : ((WebSocketMessageEditor)editor).getContents().getBytes();
     }
@@ -61,6 +70,54 @@ public class HTTPEditorPanel<T extends Editor> extends JPanel {
 
     public void clear(){
         setBytes(new byte[0]);
+    }
+
+    public void setSearchExpression(String expression){
+        editor.setSearchExpression(expression);
+    }
+
+    public int getCaretPosition(){
+        return editor.caretPosition();
+    }
+
+    public void setCaretToLastPosition(){
+        setCaretPosition(getBytes().length+1);
+    }
+
+    public void setCaretPosition(int pos) {
+        SwingUtilities.invokeLater(() ->
+                SwingUtilities.invokeLater(() -> {
+                    Component ui = editor.uiComponent();
+                    Method setSel = null;
+                    for (Method m : ui.getClass().getMethods()) {
+                        if (m.getParameterCount() == 2 &&
+                                m.getParameterTypes()[0] == int.class &&
+                                m.getParameterTypes()[1] == int.class &&
+                                m.getReturnType() == void.class) {
+                            setSel = m;
+                            break;
+                        }
+                    }
+                    if (setSel == null) {
+                        return;
+                    }
+
+
+                    int len = pos;
+                    try {
+                        Method getSelection = ui.getClass().getMethod("getSelection");
+                        int[] sel = (int[]) getSelection.invoke(ui);
+                        len = Math.max(len, sel[1]);               // last known end
+                    } catch (Exception ignored) { }
+
+                    int clamp = Math.max(0, Math.min(pos, len));
+
+                    try {
+                        setSel.invoke(ui, clamp, clamp);
+                        ui.requestFocusInWindow();
+                    } catch (Exception ignored) {}
+                })
+        );
     }
 
 }

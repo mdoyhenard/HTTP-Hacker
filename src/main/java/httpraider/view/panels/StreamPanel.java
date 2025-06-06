@@ -18,6 +18,7 @@ public class StreamPanel extends JPanel {
 
     private final ConnectionBar connectionBar;
     private final InspectorBar inspectorBar;
+    private final EditorToolsPanel editorToolsGadget;
     private final HTTPEditorPanel<HttpRequestEditor> clientRequest;
     private final HTTPEditorPanel<HttpRequestEditor> requestQueue;
     private final HTTPEditorPanel<WebSocketMessageEditor> responseQueue;
@@ -31,8 +32,8 @@ public class StreamPanel extends JPanel {
         add(connectionBar,BorderLayout.NORTH);
 
         inspectorBar = new InspectorBar();
-        EditorToolsPanel editorTools = new EditorToolsPanel();
-        inspectorBar.addTool("EDITOR","Stream Tools",editorTools);
+        editorToolsGadget = new EditorToolsPanel();
+        inspectorBar.addTool("EDITOR","Stream Tools",editorToolsGadget);
         add(inspectorBar,BorderLayout.EAST);
 
         proxyRequests = new ArrayList<>();
@@ -42,6 +43,10 @@ public class StreamPanel extends JPanel {
 
         setState(ConnectionBar.State.DISCONNECTED);
         setBaseView();
+    }
+
+    public EditorToolsPanel getEditorToolsPanel() {
+        return editorToolsGadget;
     }
 
     public HTTPEditorPanel<HttpRequestEditor> getClientRequestEditor(){
@@ -62,6 +67,18 @@ public class StreamPanel extends JPanel {
 
     public void setResponseQueue(byte[] response){
         responseQueue.setBytes(response);
+    }
+
+    public void setResponseHTTPsearch(){
+        responseQueue.setSearchExpression("HTTP/1.1");
+    }
+
+    public void setResponseQueueCaretPosition(int pos){
+        responseQueue.setCaretPosition(pos);
+    }
+
+    public byte[] getResponseQueueBytes(){
+        return responseQueue.getBytes();
     }
 
     public void addRequestQueueBytes(byte[] request){

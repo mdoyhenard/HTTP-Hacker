@@ -48,13 +48,6 @@ public final class InspectorBar extends JPanel {
         cards.add(wrapper, id);
     }
 
-    public static InspectorBar defaultInspector() {
-        InspectorBar bar = new InspectorBar();
-        bar.addTool("EDITOR", "Editor Tools", new EditorToolsPanel());
-        bar.addTool("CUSTOM", "Custom Tools", new JPanel());
-        return bar;
-    }
-
     /* ---------- expand / collapse --------------------------------------------- */
 
     private void toggle(Header h) {
@@ -100,7 +93,7 @@ public final class InspectorBar extends JPanel {
             g2.fillRect(0,0,getWidth(),getHeight());
 
             g2.setColor(STRIP_LINE);
-            g2.drawLine(0,getHeight()-1,getWidth(),getHeight()-1);
+            //g2.drawLine(0,getHeight()-1,getWidth(),getHeight()-1);
 
             g2.setColor(Color.BLACK);                     // ★ always black text
             g2.setFont(getFont().deriveFont(Font.BOLD,12f));
@@ -109,7 +102,7 @@ public final class InspectorBar extends JPanel {
             int w=fm.stringWidth(text), h=fm.getAscent();
 
             g2.translate(getWidth()/2.0,getHeight()/2.0);
-            g2.rotate(-Math.PI/2);
+            g2.rotate(Math.PI/2);
             g2.drawString(text,-w/2,h/2);
             g2.dispose();
         }
