@@ -6,10 +6,9 @@ import java.awt.*;
 public class MainTabbedPaneUI extends BasicTabbedPaneUI {
     private static final int ARC = 12;
     private static final int GAP = 3;
-    private final Color SEL       = new Color(0xA194A4B1, true);
+    private final Color SEL       = new Color(0x674A87BC, true);
     private final Color UNSEL     = new Color(0x73DADADA, true);
     private final Color BORDER    = new Color(0x0B0B0B0, true);
-    private final Color HIGHLIGHT = new Color(0x4266F4);
 
     @Override
     protected void installDefaults() {
@@ -44,12 +43,6 @@ public class MainTabbedPaneUI extends BasicTabbedPaneUI {
         int paintWidth = w - GAP;
         g2.setColor(BORDER);
         g2.drawRoundRect(x, y, paintWidth, h, ARC, ARC);
-
-        if (sel) {
-           /* g2.setColor(HIGHLIGHT);
-            int lineHeight = 3;
-            g2.fillRect(x + 2, (y + h) - lineHeight, paintWidth - 4, lineHeight);*/
-        }
         g2.dispose();
     }
 

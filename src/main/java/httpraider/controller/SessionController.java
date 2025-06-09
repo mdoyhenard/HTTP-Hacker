@@ -24,7 +24,7 @@ public final class SessionController extends AbstractUIController<Session, Sessi
                 addStreamTab();
             }
         });
-        view.getStreams().addTabRemovedListener(e -> {removeStreamTab((int) e.getSource());});
+        view.getStreams().addTabRemovedListener(e -> removeStreamTab((int) e.getSource()));
         updateFromModel();
     }
 

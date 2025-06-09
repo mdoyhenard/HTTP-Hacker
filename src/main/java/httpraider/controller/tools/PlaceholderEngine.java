@@ -108,7 +108,7 @@ public final class PlaceholderEngine {
 
     private static String replaceReadyRepeats(String txt, Map<String, Integer> val) {
         Matcher m = REPEAT.matcher(txt);
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         while (m.find()) {
             String id = m.group(1);
             if (!val.containsKey(id)) continue;

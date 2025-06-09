@@ -406,7 +406,7 @@ repeat   = 13 × "*"</pre>
         JPanel tagLine = new JPanel(new FlowLayout(FlowLayout.CENTER, 4, 0));
         tagLine.add(enableTags); tagLine.add(helpBtn);
 
-        c.gridy = row++; c.gridwidth = 0;
+        c.gridy = row; c.gridwidth = 0;
         add(tagLine, c);
     }
 }
