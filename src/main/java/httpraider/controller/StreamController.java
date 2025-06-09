@@ -2,6 +2,7 @@ package httpraider.controller;
 
 import burp.api.montoya.http.HttpService;
 import extension.ToolsManager;
+import httpraider.controller.tools.PlaceholderEngine;
 import httpraider.model.ConnectionSettings;
 import httpraider.model.Stream;
 import httpraider.view.menuBars.ConnectionBar;
@@ -26,18 +27,23 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
     private ByteArrayOutputStream response;
     private final Object responseLock = new Object();
     private final ToolsManager toolsManager;
+    private boolean tagsEnabled = false;
 
     public StreamController(Stream model, StreamPanel view) {
         super(model, view);
         state = ConnectionBar.State.DISCONNECTED;
         updateFromModel();
-        toolsManager = new ToolsManager(view);
+        toolsManager = new ToolsManager(view, this);
         view.getConnectionBar().setSendActionListener(this::sendAction);
         view.getConnectionBar().setDisconnectActionListener(this::disconnectAction);
     }
 
     public void setName(String name) {
         model.setName(name);
+    }
+
+    public void setTagsEnabled(boolean tagsEnabled) {
+        this.tagsEnabled = tagsEnabled;
     }
 
     public void setClientRequest(byte[] request) {
@@ -47,6 +53,10 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
 
     public void setHttpService(HttpService service) {
         updateConnectionSettings(new ConnectionSettings(service.host(), service.port(), service.secure()));
+    }
+
+    public String getHost(){
+        return view.getConnectionBar().getHost();
     }
 
     public void updateFromModel() {
@@ -100,9 +110,18 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
                 if (state != ConnectionBar.State.CONNECTED) {
                     return;
                 }
-                out.write(request);
+                if (tagsEnabled){
+                    int valid = PlaceholderEngine.validate(request);
+                    if (valid==PlaceholderEngine.CORRECT) out.write(PlaceholderEngine.resolve(request));
+                    else {
+                        runOnEDT(() -> view.setResponseQueue(("<!--ERROR procesing the tag at index: "+valid+" -->").getBytes()));
+                        disconnect();
+                        return;
+                    }
+                }
+                else out.write(request);
                 out.flush();
-                runOnEDT(() -> view.addRequestQueueBytes(request));
+                runOnEDT(() -> view.addRequestQueueBytes(tagsEnabled ? PlaceholderEngine.resolve(request) : request));
             } catch (Exception ex) {
                 runOnEDT(() -> view.setRequestQueue("<!--ERROR SENDING REQUEST DATA-->" + Arrays.toString(ex.getStackTrace())));
                 disconnect();
@@ -166,8 +185,9 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
                     SSLSocketFactory sslSocketFactory = sc.getSocketFactory();
                     SSLSocket sslSocket = (SSLSocket) sslSocketFactory.createSocket(plainSocket, host, port, true);
                     sslSocket.setEnabledProtocols(new String[]{"TLSv1.2", "TLSv1.3"});
-                    sslSocket.setSoTimeout(5000);
+                    sslSocket.setSoTimeout(6000);
                     sslSocket.startHandshake();
+                    sslSocket.setSoTimeout(0);
                     socket = sslSocket;
                 } else {
                     socket = new Socket();

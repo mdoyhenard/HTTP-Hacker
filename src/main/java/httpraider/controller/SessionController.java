@@ -58,7 +58,7 @@ public final class SessionController extends AbstractUIController<Session, Sessi
     }
 
     public void addStreamTab() {
-        Stream streamModel = new Stream("Stream " + nameSuffix++);
+        Stream streamModel = new Stream("" + nameSuffix++);
         model.setNameSuffix(nameSuffix);
         addStreamTab(streamModel);
     }

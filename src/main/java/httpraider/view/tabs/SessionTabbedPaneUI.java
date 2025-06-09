@@ -5,7 +5,7 @@ import java.awt.*;
 
 public class SessionTabbedPaneUI extends BasicTabbedPaneUI {
     public static final Color ORANGE = new Color(0xF47442);
-    public static final Color SEL       = new Color(0x2CA7B1B0, true);
+    public static final Color SEL       = new Color(0x52A7B1B0, true);
     public static final Color UNSEL     = new Color(0x1AB5BFBF, true);
 
 

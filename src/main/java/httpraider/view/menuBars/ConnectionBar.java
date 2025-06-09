@@ -76,6 +76,7 @@ public class ConnectionBar extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 resetCheckBox.setSelected(!isReset());
+                resetCheckboxListener();
             }
         });
 
@@ -87,7 +88,10 @@ public class ConnectionBar extends JPanel {
         tlsLabel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                if (tlsCheckBox.isEnabled()) setTLS(!isTLS());
+                if (tlsCheckBox.isEnabled()) {
+                    setTLS(!isTLS());
+                    tlsCheckboxListener();
+                }
             }
         });
 
@@ -122,20 +126,32 @@ public class ConnectionBar extends JPanel {
         setState(State.DISCONNECTED);
     }
 
+    private void resetCheckboxListener(){
+        resetCheckboxListener(null);
+    }
+
     private void resetCheckboxListener(ActionEvent e){
-        if (resetCheckBox.isSelected()){
-            sendButton.setText(TXT_BTN_CONNECT_AND_SEND);
-            sendButton.setBackground(BTN_COLOR_CONNECT);
-        }
-        else if (currentState == State.CONNECTED){
-            sendButton.setText(TXT_BTN_SEND);
-            sendButton.setBackground(BTN_COLOR_SEND);
-        }
+        invokeLater(()->{
+            if (resetCheckBox.isSelected()){
+                sendButton.setText(TXT_BTN_CONNECT_AND_SEND);
+                sendButton.setBackground(BTN_COLOR_CONNECT);
+            }
+            else if (currentState == State.CONNECTED){
+                sendButton.setText(TXT_BTN_SEND);
+                sendButton.setBackground(BTN_COLOR_SEND);
+            }
+        });
+    }
+
+    private void tlsCheckboxListener(){
+        tlsCheckboxListener(null);
     }
 
     private void tlsCheckboxListener(ActionEvent e){
-        if (tlsCheckBox.isSelected() && getPort() == 0 || getPort() == 80) setPort(443);
-        else if (!tlsCheckBox.isSelected() && getPort() == 443) setPort(80);
+        invokeLater(()-> {
+            if (tlsCheckBox.isSelected() && getPort() == 0 || getPort() == 80) setPort(443);
+            else if (!tlsCheckBox.isSelected() && getPort() == 443) setPort(80);
+        });
     }
 
     public void setSendActionListener(ActionListener l) {
@@ -178,15 +194,15 @@ public class ConnectionBar extends JPanel {
     }
 
     public void setHost(String host){
-        hostField.setText(host);
+        invokeLater(()->hostField.setText(host));
     }
 
     public void setPort(int port){
-        portField.setText(String.valueOf(port));
+        invokeLater(()->portField.setText(String.valueOf(port)));
     }
 
     public void setTLS(boolean tls){
-        tlsCheckBox.setSelected(tls);
+            invokeLater(()->tlsCheckBox.setSelected(tls));
     }
 
     public String getHost() {
