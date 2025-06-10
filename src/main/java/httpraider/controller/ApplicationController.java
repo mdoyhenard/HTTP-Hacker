@@ -3,7 +3,7 @@ package httpraider.controller;
 import extension.HTTPRaiderContextMenu;
 import extension.HTTPRaiderExtension;
 import httpraider.model.PersistenceManager;
-import httpraider.model.Session;
+import httpraider.model.SessionModel;
 import httpraider.view.panels.ApplicationPanel;
 import httpraider.view.panels.SessionPanel;
 
@@ -15,8 +15,8 @@ import java.util.Optional;
 
 public final class ApplicationController {
 
-    private static final String KEY = "HTTPStreamHacker.sessions.number";
-    private static final String KEY_NUMBER = "HTTPStreamHacker.sessions.number";
+    private static final String KEY = "HTTPRaider.sessions";
+    private static final String KEY_NUMBER = "HTTPRaider.sessions.number";
     private final ApplicationPanel rootView;
     private final ArrayList<SessionController> sessionControllers;
     private int nameSuffix;
@@ -49,6 +49,14 @@ public final class ApplicationController {
         rootView.setSessionName(name, index);
     }
 
+    public void setSelectedSession(int id){
+        rootView.setSelectedSession(id);
+    }
+
+    public void setSelectedSession(SessionController sessionController){
+        if (sessionControllers.contains(sessionController)) setSelectedSession(sessionControllers.indexOf(sessionController));
+    }
+
     public int getNameSuffix(){
         return nameSuffix++;
     }
@@ -62,11 +70,11 @@ public final class ApplicationController {
     }
 
     public void addSessionTab() {
-        Session sessionModel = new Session("Session " + nameSuffix++, 1);
+        SessionModel sessionModel = new SessionModel("Session " + nameSuffix++, 1);
         addSessionTab(sessionModel);
     }
 
-    private void addSessionTab(Session sessionModel) {
+    private void addSessionTab(SessionModel sessionModel) {
         SessionPanel sessionPanel = new SessionPanel();
         sessionControllers.add(new SessionController(sessionModel, sessionPanel));
         rootView.addSessionTab(sessionModel.getName(), sessionPanel);
@@ -87,18 +95,18 @@ public final class ApplicationController {
 
         Optional<?> optRaw = PersistenceManager.load(KEY, ArrayList.class);
         if (optRaw.isEmpty()) return;
-        ArrayList<Session> saved;
+        ArrayList<SessionModel> saved;
         try {
-            saved = (ArrayList<Session>) optRaw.get();
+            saved = (ArrayList<SessionModel>) optRaw.get();
             if (saved.isEmpty()) return;
         } catch (NoSuchElementException e){
             return;
         }
-        for (Session s : saved) addSessionTab(s);
+        for (SessionModel s : saved) addSessionTab(s);
     }
 
     private void saveAll() {
-        ArrayList<Session> out = new ArrayList<>();
+        ArrayList<SessionModel> out = new ArrayList<>();
         for (SessionController sc : sessionControllers) out.add(sc.getModel());
         PersistenceManager.saveInt(KEY_NUMBER, nameSuffix);
         PersistenceManager.save(KEY, out);

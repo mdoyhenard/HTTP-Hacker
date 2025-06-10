@@ -3,8 +3,8 @@ package httpraider.controller;
 import burp.api.montoya.http.HttpService;
 import extension.ToolsManager;
 import httpraider.controller.tools.PlaceholderEngine;
-import httpraider.model.ConnectionSettings;
-import httpraider.model.Stream;
+import httpraider.model.ConnectionSettingsModel;
+import httpraider.model.StreamModel;
 import httpraider.view.menuBars.ConnectionBar;
 import httpraider.view.panels.StreamPanel;
 
@@ -17,7 +17,7 @@ import java.net.Socket;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 
-public final class StreamController extends AbstractUIController<Stream, StreamPanel> {
+public final class StreamController extends AbstractUIController<StreamModel, StreamPanel> {
 
     private Socket socket;
     private BufferedInputStream in;
@@ -29,7 +29,7 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
     private final ToolsManager toolsManager;
     private boolean tagsEnabled = false;
 
-    public StreamController(Stream model, StreamPanel view) {
+    public StreamController(StreamModel model, StreamPanel view) {
         super(model, view);
         state = ConnectionBar.State.DISCONNECTED;
         updateFromModel();
@@ -52,7 +52,7 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
     }
 
     public void setHttpService(HttpService service) {
-        updateConnectionSettings(new ConnectionSettings(service.host(), service.port(), service.secure()));
+        updateConnectionSettings(new ConnectionSettingsModel(service.host(), service.port(), service.secure()));
     }
 
     public String getHost(){
@@ -80,7 +80,7 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
         model.getConnectionSettings().setTls(view.getConnectionBar().isTLS());
     }
 
-    private void updateConnectionSettings(ConnectionSettings connectionSettingsModel) {
+    private void updateConnectionSettings(ConnectionSettingsModel connectionSettingsModel) {
         model.setConnectionSettings(connectionSettingsModel);
         view.updateConnectionBar(connectionSettingsModel.getHost(), connectionSettingsModel.getPort(), connectionSettingsModel.isTls());
     }

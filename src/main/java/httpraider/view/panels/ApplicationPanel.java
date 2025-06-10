@@ -21,6 +21,10 @@ public class ApplicationPanel extends JPanel {
         return sessions;
     }
 
+    public void setSelectedSession(int id){
+        sessions.setSelectedIndex(id);
+    }
+
     public void addSessionTab(String name, SessionPanel sessionPanel){
         sessions.addPanelTab(name, sessionPanel);
     }

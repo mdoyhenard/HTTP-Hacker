@@ -51,6 +51,7 @@ public class HTTPRaiderContextMenu implements ContextMenuItemsProvider {
         sessionController.addStreamTab();
         sessionController.getLastStreamController().setClientRequest(replaceVersion(request.toByteArray().getBytes()));
         sessionController.getLastStreamController().setHttpService(request.httpService());
+        appController.setSelectedSession(sessionController);
     }
 
     private byte[] replaceVersion(byte[] input) {

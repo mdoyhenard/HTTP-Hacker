@@ -1,7 +1,7 @@
 package httpraider.controller;
 
-import httpraider.model.Session;
-import httpraider.model.Stream;
+import httpraider.model.SessionModel;
+import httpraider.model.StreamModel;
 import httpraider.view.panels.StreamPanel;
 import httpraider.view.panels.SessionPanel;
 
@@ -10,12 +10,13 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SessionController extends AbstractUIController<Session, SessionPanel> {
+public final class SessionController extends AbstractUIController<SessionModel, SessionPanel> {
 
+    private static final String KEY_NETWORK = "HTTPRaider.networks";
     private final List<StreamController> streamControllers = new ArrayList<>();
     private int nameSuffix;
 
-    public SessionController(Session model, SessionPanel sessionPanel) {
+    public SessionController(SessionModel model, SessionPanel sessionPanel) {
         super(model, sessionPanel);
         nameSuffix = model.getNameSuffix();
         view.getStreams().addPlusMouseListener(new MouseAdapter() {
@@ -25,13 +26,13 @@ public final class SessionController extends AbstractUIController<Session, Sessi
             }
         });
         view.getStreams().addTabRemovedListener(e -> removeStreamTab((int) e.getSource()));
-        updateFromModel();
+        updateStreamsFromModel();
     }
 
-    public void updateFromModel(){
+    private void updateStreamsFromModel(){
         streamControllers.clear();
         view.removeAllStreamTabs();
-        for (Stream streamModel : model.getStreams()){
+        for (StreamModel streamModel : model.getStreams()){
             StreamPanel streamPanel = new StreamPanel();
             StreamController streamCtl = new StreamController(streamModel, streamPanel);
             streamControllers.add(streamCtl);
@@ -58,12 +59,12 @@ public final class SessionController extends AbstractUIController<Session, Sessi
     }
 
     public void addStreamTab() {
-        Stream streamModel = new Stream("" + nameSuffix++);
+        StreamModel streamModel = new StreamModel("" + nameSuffix++);
         model.setNameSuffix(nameSuffix);
         addStreamTab(streamModel);
     }
 
-    private void addStreamTab(Stream streamModel) {
+    private void addStreamTab(StreamModel streamModel) {
         StreamPanel streamPanel = new StreamPanel();
         StreamController streamCtl = new StreamController(streamModel, streamPanel);
         model.addStream(streamModel);
