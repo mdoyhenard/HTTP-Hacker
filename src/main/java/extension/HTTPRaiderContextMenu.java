@@ -8,7 +8,9 @@ import httpraider.controller.SessionController;
 
 import javax.swing.*;
 import java.awt.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class HTTPRaiderContextMenu implements ContextMenuItemsProvider {
@@ -41,13 +43,40 @@ public class HTTPRaiderContextMenu implements ContextMenuItemsProvider {
 
     private void sendRequestToNewSession(HttpRequest request) {
         appController.addSessionTab();
-        appController.getLastController().getLastStreamController().setClientRequest(request.toByteArray().getBytes());
+        appController.getLastController().getLastStreamController().setClientRequest(replaceVersion(request.toByteArray().getBytes()));
         appController.getLastController().getLastStreamController().setHttpService(request.httpService());
     }
 
     private void sendRequestToSession(HttpRequest request, SessionController sessionController) {
         sessionController.addStreamTab();
-        sessionController.getLastStreamController().setClientRequest(request.toByteArray().getBytes());
+        sessionController.getLastStreamController().setClientRequest(replaceVersion(request.toByteArray().getBytes()));
         sessionController.getLastStreamController().setHttpService(request.httpService());
+    }
+
+    private byte[] replaceVersion(byte[] input) {
+        final byte[] pattern     = "HTTP/2".getBytes(StandardCharsets.ISO_8859_1);
+        final byte[] replacement = "HTTP/1.1".getBytes(StandardCharsets.ISO_8859_1);
+
+        outer:
+        for (int i = 0; i <= input.length - pattern.length; i++) {
+            for (int j = 0; j < pattern.length; j++) {
+                if (input[i + j] != pattern[j]) {
+                    continue outer;
+                }
+            }
+
+            byte[] output = new byte[input.length + 2];
+
+            System.arraycopy(input, 0, output, 0, i);
+            System.arraycopy(replacement, 0, output, i, replacement.length);
+            int tailSrcPos  = i + pattern.length;
+            int tailDestPos = i + replacement.length;
+            System.arraycopy(input, tailSrcPos, output, tailDestPos,
+                    input.length - tailSrcPos);
+
+            return output;
+        }
+
+        return Arrays.copyOf(input, input.length);
     }
 }

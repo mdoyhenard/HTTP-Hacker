@@ -225,7 +225,7 @@ public final class StreamController extends AbstractUIController<Stream, StreamP
                 view.setResponseQueueCaretPosition(pos);
             });
             updateTimer.setRepeats(false);
-            view.setResponseHTTPsearch();
+            //view.setResponseHTTPsearch();
             Thread readThread = new Thread(() -> {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
