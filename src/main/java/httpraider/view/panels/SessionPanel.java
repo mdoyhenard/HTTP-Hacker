@@ -71,6 +71,10 @@ public class SessionPanel extends JPanel {
         });
     }
 
+    public NetworkPanel getNetworkPanel() {
+        return networkView;
+    }
+
 
     public CustomTabbedPane getStreams()           { return streams;              }
 

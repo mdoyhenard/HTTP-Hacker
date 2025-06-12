@@ -1,5 +1,7 @@
 package httpraider.model;
 
+import httpraider.model.network.NetworkModel;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -14,6 +16,7 @@ public class SessionModel implements Serializable {
     private final String id;
     private String name;
     private final List<StreamModel> streamModels;
+    private NetworkModel networkModel;
     private int nameSuffix;
 
     public SessionModel(){
@@ -21,6 +24,7 @@ public class SessionModel implements Serializable {
         streamModels = new ArrayList<>();
         this.name = "Session";
         this.nameSuffix = 1;
+        networkModel = new NetworkModel();
     }
 
     public SessionModel(String name, int nameSuffix) {
@@ -28,6 +32,15 @@ public class SessionModel implements Serializable {
         streamModels = new ArrayList<>();
         this.name = name;
         this.nameSuffix = nameSuffix;
+        networkModel = new NetworkModel();
+    }
+
+    public NetworkModel getNetworkModel() {
+        return networkModel;
+    }
+
+    public void setNetworkModel(NetworkModel networkModel) {
+        this.networkModel = networkModel;
     }
 
     public String getId() {
@@ -59,5 +72,7 @@ public class SessionModel implements Serializable {
     public void setNameSuffix(int nameSuffix) {
         this.nameSuffix = nameSuffix;
     }
+
+
 
 }

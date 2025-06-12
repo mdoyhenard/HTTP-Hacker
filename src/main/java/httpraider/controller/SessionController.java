@@ -1,7 +1,9 @@
 package httpraider.controller;
 
+import extension.HTTPRaiderExtension;
 import httpraider.model.SessionModel;
 import httpraider.model.StreamModel;
+import httpraider.model.network.NetworkModel;
 import httpraider.view.panels.StreamPanel;
 import httpraider.view.panels.SessionPanel;
 
@@ -14,6 +16,7 @@ public final class SessionController extends AbstractUIController<SessionModel, 
 
     private static final String KEY_NETWORK = "HTTPRaider.networks";
     private final List<StreamController> streamControllers = new ArrayList<>();
+    private final NetworkController networkController;
     private int nameSuffix;
 
     public SessionController(SessionModel model, SessionPanel sessionPanel) {
@@ -26,6 +29,13 @@ public final class SessionController extends AbstractUIController<SessionModel, 
             }
         });
         view.getStreams().addTabRemovedListener(e -> removeStreamTab((int) e.getSource()));
+        NetworkModel networkModel = model.getNetworkModel(); // Or: new NetworkModel() if not persisted
+        if (networkModel == null) {
+            networkModel = new NetworkModel();
+            model.setNetworkModel(networkModel);
+        }
+        networkController = new NetworkController(networkModel, sessionPanel.getNetworkPanel());
+        HTTPRaiderExtension.API.extension().registerUnloadingHandler(this::saveAll);
         updateStreamsFromModel();
     }
 
@@ -75,6 +85,11 @@ public final class SessionController extends AbstractUIController<SessionModel, 
     private void removeStreamTab(int streamIndex) {
         model.removeStream(streamControllers.get(streamIndex).model);
         streamControllers.remove(streamIndex);
+    }
+
+    private void saveAll() {
+        networkController.save();
+        //TODO
     }
 
 }
