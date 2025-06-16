@@ -32,7 +32,7 @@ public class ConnectionBar extends JPanel {
     private static final Color FONT_CONNECTED = new Color(0xFF5B934C, true);
     private static final Color FONT_ERROR = new Color(0xFFD32F2F, true);
 
-    private static final Color BTN_COLOR_CONNECT = new Color(119, 79, 221, 224);
+    private static final Color BTN_COLOR_CONNECT = new Color(85, 149, 96, 213);
     private static final Color BTN_COLOR_SEND = new Color(255, 95, 44);
 
     private State currentState;

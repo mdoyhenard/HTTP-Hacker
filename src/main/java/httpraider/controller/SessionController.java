@@ -89,7 +89,6 @@ public final class SessionController extends AbstractUIController<SessionModel, 
 
     private void saveAll() {
         networkController.save();
-        //TODO
     }
 
 }
