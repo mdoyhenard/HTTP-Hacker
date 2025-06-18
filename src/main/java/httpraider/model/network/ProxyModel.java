@@ -13,7 +13,7 @@ public class ProxyModel implements Serializable {
     public static final String CLIENT_ID = "client";
 
     private final String id;
-    private String name;
+    private String domainName;
     private String description;
     private String basePath;
     private String parsingCode;
@@ -22,9 +22,9 @@ public class ProxyModel implements Serializable {
     private Map<String, String> forwardingRules;
     private boolean isClient;
 
-    public ProxyModel(String id, String name, String description, String basePath, String parsingCode, String interpretationCode, String forwardingCode, Map<String, String> forwardingRules) {
+    public ProxyModel(String id, String domainName, String description, String basePath, String parsingCode, String interpretationCode, String forwardingCode, Map<String, String> forwardingRules) {
         this.id = id == null ? UUID.randomUUID().toString() : id;
-        this.name = name;
+        this.domainName = domainName;
         this.description = description;
         this.basePath = basePath;
         this.parsingCode = parsingCode;
@@ -34,8 +34,8 @@ public class ProxyModel implements Serializable {
         this.isClient = false;
     }
 
-    public ProxyModel(String name) {
-        this(null, name, "", "", "", "", "", Map.of());
+    public ProxyModel(String domainName) {
+        this(null, domainName, "", "", "", "", "", Map.of());
     }
 
     public String getId() {
@@ -50,8 +50,8 @@ public class ProxyModel implements Serializable {
         isClient = client;
     }
 
-    public String getName() {
-        return name;
+    public String getDomainName() {
+        return domainName;
     }
 
     public String getDescription() {
@@ -78,8 +78,8 @@ public class ProxyModel implements Serializable {
         return forwardingRules;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setDomainName(String domainName) {
+        this.domainName = domainName;
     }
 
     public void setDescription(String description) {

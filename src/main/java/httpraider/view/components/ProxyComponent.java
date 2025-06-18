@@ -1,11 +1,11 @@
-package httpraider.view.panels;
+package httpraider.view.components;
 
 import httpraider.controller.NetworkController;
 
 import javax.swing.*;
 import java.awt.*;
 
-public class ProxyView extends JComponent {
+public class ProxyComponent extends JComponent {
 
     private final String id;
     private final boolean isClient;
@@ -16,14 +16,14 @@ public class ProxyView extends JComponent {
     static {
         ImageIcon c = null, p = null;
         try {
-            c = new ImageIcon(ProxyView.class.getResource("/clientIcon.png"));
-            p = new ImageIcon(ProxyView.class.getResource("/proxyIcon.png"));
+            c = new ImageIcon(ProxyComponent.class.getResource("/clientIcon.png"));
+            p = new ImageIcon(ProxyComponent.class.getResource("/proxyIcon.png"));
         } catch (Exception ignored) {}
         clientImg = (c != null && c.getIconWidth() > 0) ? c.getImage().getScaledInstance(NetworkController.ICON_WIDTH, NetworkController.ICON_HEIGHT, Image.SCALE_SMOOTH) : null;
         proxyImg  = (p != null && p.getIconWidth() > 0) ? p.getImage().getScaledInstance(NetworkController.ICON_WIDTH, NetworkController.ICON_HEIGHT, Image.SCALE_SMOOTH) : null;
     }
 
-    public ProxyView(String id, boolean isClient) {
+    public ProxyComponent(String id, boolean isClient) {
         this.id = id;
         this.isClient = isClient;
         this.selected = false;

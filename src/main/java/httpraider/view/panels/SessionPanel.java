@@ -1,8 +1,8 @@
 package httpraider.view.panels;
 
 import extension.HTTPRaiderExtension;
-import httpraider.view.tabs.CustomTabbedPane;
-import httpraider.view.tabs.SessionTabbedPaneUI;
+import httpraider.view.components.CustomTabbedPane;
+import httpraider.view.components.SessionTabbedPaneUI;
 
 import javax.swing.*;
 import javax.swing.border.MatteBorder;

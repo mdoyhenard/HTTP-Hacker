@@ -5,9 +5,11 @@ import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.ui.editor.Editor;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import burp.api.montoya.ui.editor.WebSocketMessageEditor;
+import httpraider.view.components.SwitchButton;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
@@ -15,17 +17,34 @@ import static javax.swing.SwingUtilities.invokeLater;
 
 public class HTTPEditorPanel<T extends Editor> extends JPanel {
 
+    private final JPanel topPanel;
     private final JLabel name;
     private final T editor;
+    private SwitchButton switchButton;
 
     public HTTPEditorPanel(String text, T editor){
         super(new BorderLayout());
+        topPanel = new JPanel(new BorderLayout());
         this.editor = editor;
+        switchButton = null;
         name = new JLabel(text);
         name.setFont(name.getFont().deriveFont(Font.BOLD, 13f));
-        name.setBorder(BorderFactory.createEmptyBorder(8, 12, 2, 0));
-        add(name, BorderLayout.NORTH);
+        topPanel.setBorder(BorderFactory.createEmptyBorder(7, 12, 5, 0));
+        topPanel.add(name, BorderLayout.WEST);
+        add(topPanel, BorderLayout.NORTH);
         add(this.editor.uiComponent(), BorderLayout.CENTER);
+    }
+
+    public void setSwitch(String text, ActionListener l){
+        if (switchButton != null) topPanel.remove(switchButton);
+        switchButton =  new SwitchButton(text);
+        switchButton.addActionListener(l);
+        topPanel.add(switchButton, BorderLayout.EAST);
+    }
+
+    public void removeSwitch(){
+        if (switchButton != null) topPanel.remove(switchButton);
+        switchButton = null;
     }
 
     private T getEditor(){ return editor; }

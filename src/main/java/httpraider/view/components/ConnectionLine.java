@@ -1,14 +1,14 @@
-package httpraider.view.panels;
+package httpraider.view.components;
 
 import java.awt.*;
 
-public class ConnectionView {
+public class ConnectionLine {
 
-    private final ProxyView from;
-    private final ProxyView to;
+    private final ProxyComponent from;
+    private final ProxyComponent to;
     private boolean highlighted;
 
-    public ConnectionView(ProxyView from, ProxyView to) {
+    public ConnectionLine(ProxyComponent from, ProxyComponent to) {
         this.from = from;
         this.to = to;
         this.highlighted = false;
@@ -40,11 +40,11 @@ public class ConnectionView {
     }
 
 
-    public ProxyView getFrom() {
+    public ProxyComponent getFrom() {
         return from;
     }
 
-    public ProxyView getTo() {
+    public ProxyComponent getTo() {
         return to;
     }
 }

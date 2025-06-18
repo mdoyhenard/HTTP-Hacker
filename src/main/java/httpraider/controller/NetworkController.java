@@ -7,6 +7,8 @@ import extension.HTTPRaiderExtension;
 import httpraider.model.network.ConnectionModel;
 import httpraider.model.network.NetworkModel;
 import httpraider.model.network.ProxyModel;
+import httpraider.view.components.ConnectionLine;
+import httpraider.view.components.ProxyComponent;
 import httpraider.view.panels.*;
 import httpraider.view.menuBars.NetworkBar;
 import httpraider.view.menuBars.ProxyBar;
@@ -31,11 +33,12 @@ public class NetworkController {
     private boolean isPanning;
     private Point panStart;
     private Component pressedComponent;
-    private ProxyView draggingProxy;
+    private ProxyComponent draggingProxy;
     private Point dragOffset;
-    private ProxyView connectStartProxy;
+    private ProxyComponent connectStartProxy;
     private boolean isConnecting;
     private String selectedProxyId;
+    private boolean useForwardedRequest;
 
     public static final int ICON_WIDTH = 47;
     public static final int ICON_HEIGHT = 65;
@@ -77,7 +80,7 @@ public class NetworkController {
             positions.putAll(generateLayout(proxies));
         }
         for (ProxyModel proxy : proxies) {
-            ProxyView pv = new ProxyView(proxy.getId(), proxy.isClient());
+            ProxyComponent pv = new ProxyComponent(proxy.getId(), proxy.isClient());
             Point pos = positions.get(proxy.getId());
             if (pos == null) {
                 pos = new Point(350, 250);
@@ -90,10 +93,10 @@ public class NetworkController {
             installProxyListeners(pv, proxy);
         }
         for (ConnectionModel c : model.getConnections()) {
-            ProxyView from = canvas.getProxyView(c.getFromId());
-            ProxyView to   = canvas.getProxyView(c.getToId());
+            ProxyComponent from = canvas.getProxyView(c.getFromId());
+            ProxyComponent to   = canvas.getProxyView(c.getToId());
             if (from != null && to != null) {
-                canvas.addConnectionView(new ConnectionView(from, to));
+                canvas.addConnectionView(new ConnectionLine(from, to));
             }
         }
         canvas.setConnectStartProxy(isConnecting ? connectStartProxy : null);
@@ -287,7 +290,7 @@ public class NetworkController {
 
     private void updateProxyViewLocations() {
         for (ProxyModel p : model.getProxies()) {
-            ProxyView pv = canvas.getProxyView(p.getId());
+            ProxyComponent pv = canvas.getProxyView(p.getId());
             Point pos    = positions.get(p.getId());
             if (pv != null && pos != null) {
                 pv.setLocation(pos.x + pan.x, pos.y + pan.y);
@@ -362,7 +365,7 @@ public class NetworkController {
         proxyBar.addDomainNameListener(new DocumentListener() {
             private void update() {
                 if (selectedProxyId != null) {
-                    model.getProxy(selectedProxyId).setName(proxyBar.getDomainName());
+                    model.getProxy(selectedProxyId).setDomainName(proxyBar.getDomainName());
                 }
             }
             public void insertUpdate(DocumentEvent e) { update(); }
@@ -373,7 +376,7 @@ public class NetworkController {
 
     }
 
-    private void installProxyListeners(ProxyView pv, ProxyModel pm) {
+    private void installProxyListeners(ProxyComponent pv, ProxyModel pm) {
         pv.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 if (SwingUtilities.isRightMouseButton(e)) {
@@ -432,7 +435,7 @@ public class NetworkController {
     private final MouseListener canvasMouseListener = new MouseAdapter() {
         public void mousePressed(MouseEvent e) {
             if (SwingUtilities.isRightMouseButton(e)) {
-                ConnectionView conn = canvas.getHighlightedConnection();
+                ConnectionLine conn = canvas.getHighlightedConnection();
                 if (conn != null) {
                     showConnectionMenu(conn, e.getX(), e.getY());
                 } else {
@@ -442,7 +445,7 @@ public class NetworkController {
             }
             if (!SwingUtilities.isLeftMouseButton(e)) return;
             pressedComponent = canvas.getComponentAt(e.getPoint());
-            if (!(pressedComponent instanceof ProxyView)) {
+            if (!(pressedComponent instanceof ProxyComponent)) {
                 isPanning = true;
                 panStart  = e.getPoint();
             }
@@ -455,14 +458,14 @@ public class NetworkController {
         public void mouseClicked(MouseEvent e) {
             if (!SwingUtilities.isLeftMouseButton(e)) return;
             Component c = canvas.getComponentAt(e.getPoint());
-            if (isConnecting && connectStartProxy != null && !(c instanceof ProxyView)) {
+            if (isConnecting && connectStartProxy != null && !(c instanceof ProxyComponent)) {
                 isConnecting      = false;
                 connectStartProxy = null;
                 canvas.setConnectStartProxy(null);
                 canvas.setMousePoint(null);
                 canvas.repaint();
             }
-            if (!(c instanceof ProxyView)) {
+            if (!(c instanceof ProxyComponent)) {
                 unselectProxy();
             }
         }
@@ -483,7 +486,7 @@ public class NetworkController {
             }
         }
         public void mouseMoved(MouseEvent e) {
-            ConnectionView nearest = canvas.getConnectionAt(e.getPoint());
+            ConnectionLine nearest = canvas.getConnectionAt(e.getPoint());
             canvas.setHighlightedConnection(nearest);
             if (isConnecting && connectStartProxy != null) {
                 canvas.setMousePoint(e.getPoint());
@@ -503,18 +506,82 @@ public class NetworkController {
         updateProxyBarVisibility();
 
         ProxyModel pm = model.getProxy(id);
-        proxyBar.setDomainName(pm.getName());
+        List<ProxyModel> proxiesToClient = getConnectionPathToClient(id);
+
+        proxyBar.setDomainName(pm.getDomainName());
         proxyBar.setDescription(pm.getDescription());
         proxyBar.setBasePath(pm.getBasePath());
 
         HTTPEditorPanel<HttpRequestEditor> reqEditor =
-                new HTTPEditorPanel<>("Proxy Request",
+                new HTTPEditorPanel<>("Base Request",
                         HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
-        HTTPEditorPanel<WebSocketMessageEditor> respEditor =
-                new HTTPEditorPanel<>("Proxy Response",
+        HTTPEditorPanel<WebSocketMessageEditor> parsedReq =
+                new HTTPEditorPanel<>("Parsed Request",
                         HTTPRaiderExtension.API.userInterface().createWebSocketMessageEditor(EditorOptions.READ_ONLY));
-        view.showHttpEditors(reqEditor, respEditor);
+        useForwardedRequest = false;
+
+        if (proxiesToClient != null && !proxiesToClient.isEmpty()) parsedReq.setSwitch("Use transformations", e -> {useForwardedRequest = !useForwardedRequest;});
+        view.showHttpEditors(reqEditor, parsedReq);
     }
+
+    private List<ProxyModel> getConnectionPathToClient(String proxyId) {
+        if (proxyId == null) return null;
+        // Find the client proxy ID
+        String clientId = null;
+        for (ProxyModel p : model.getProxies()) {
+            if (p.isClient()) {
+                clientId = p.getId();
+                break;
+            }
+        }
+        if (clientId == null || proxyId.equals(clientId)) return null;
+
+        // Build adjacency map
+        Map<String, Set<String>> adj = new HashMap<>();
+        for (ProxyModel p : model.getProxies()) {
+            adj.put(p.getId(), new HashSet<>());
+        }
+        for (ConnectionModel c : model.getConnections()) {
+            adj.get(c.getFromId()).add(c.getToId());
+            adj.get(c.getToId()).add(c.getFromId());
+        }
+
+        // BFS from client to find path
+        Map<String, String> parent = new HashMap<>();
+        Queue<String> queue = new LinkedList<>();
+        Set<String> visited = new HashSet<>();
+        queue.add(clientId);
+        visited.add(clientId);
+
+        boolean found = false;
+        while (!queue.isEmpty() && !found) {
+            String current = queue.poll();
+            for (String neighbor : adj.get(current)) {
+                if (!visited.contains(neighbor)) {
+                    visited.add(neighbor);
+                    parent.put(neighbor, current);
+                    if (neighbor.equals(proxyId)) {
+                        found = true;
+                        break;
+                    }
+                    queue.add(neighbor);
+                }
+            }
+        }
+        if (!found) return null;
+
+        // Reconstruct path
+        List<ProxyModel> path = new ArrayList<>();
+        String curr = proxyId;
+        while (parent.containsKey(curr)) {
+            String prev = parent.get(curr);
+            if (prev.equals(clientId)) break;
+            path.add(0, model.getProxy(prev));
+            curr = prev;
+        }
+        return path;
+    }
+
 
     private void unselectProxy() {
         if (selectedProxyId != null && canvas.getProxyView(selectedProxyId) != null) {
@@ -534,7 +601,7 @@ public class NetworkController {
         view.setProxyBarVisible(selectedProxyId != null);
     }
 
-    private void showConnectionMenu(ConnectionView cv, int x, int y) {
+    private void showConnectionMenu(ConnectionLine cv, int x, int y) {
         JPopupMenu menu = new JPopupMenu();
         JMenuItem del = new JMenuItem("Delete");
         del.addActionListener(e -> {
@@ -548,7 +615,7 @@ public class NetworkController {
         menu.show(canvas, x, y);
     }
 
-    private void showProxyMenu(ProxyView pv, int x, int y) {
+    private void showProxyMenu(ProxyComponent pv, int x, int y) {
         JPopupMenu menu = new JPopupMenu();
         if (!pv.isClient()) {
             JMenuItem del = new JMenuItem("Delete");

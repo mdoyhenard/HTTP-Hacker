@@ -1,20 +1,25 @@
-package httpraider.controller.tools;
+package httpraider.controller.engines;
+
+import httpraider.controller.tools.CustomTagManager;
+import httpraider.model.CustomTagModel;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public final class PlaceholderEngine {
+public final class TagEngine {
 
     public static final int CORRECT = 0;
 
-    private static final Pattern START = Pattern.compile("<start_([0-9]+)>");
-    private static final Pattern END = Pattern.compile("<end_([0-9]+)>");
+    private static final Pattern START  = Pattern.compile("<start_([0-9]+)>");
+    private static final Pattern END    = Pattern.compile("<end_([0-9]+)>");
     private static final Pattern SIMPLE = Pattern.compile("<(int|hex)_([0-9]+)>");
     private static final Pattern REPEAT = Pattern.compile("<repeat\\(([0-9]+),\"([^\"]*)\"\\)>");
-    private static final Pattern TOKEN = Pattern.compile(
-            "<start_([0-9]+)>|<end_([0-9]+)>|<repeat\\(([0-9]+),\"[^\"]*\"\\)>");
+
+    private static final Pattern TOKEN  = Pattern.compile(
+            "<start_([0-9]+)>|<end_([0-9]+)>|<repeat\\(([0-9]+),\"[^\"]*\"\\)>"
+    );
 
     private record Tag(String id, int pos) {}
 
@@ -28,7 +33,6 @@ public final class PlaceholderEngine {
         Matcher t = TOKEN.matcher(src);
         while (t.find()) {
             int pos = t.start();
-
             if (t.group(1) != null) {
                 String id = t.group(1);
                 if (closed.contains(id)) return pos;
@@ -55,16 +59,43 @@ public final class PlaceholderEngine {
     public static byte[] resolve(byte[] data) {
         String src = new String(data, StandardCharsets.ISO_8859_1);
         if (validate(data) != CORRECT) return data;
-        Map<String, Integer> values = new HashMap<>();
-        String noBlocks = resolveBlocks(src, values);
-        String out = replaceAll(noBlocks, values);
+
+        Map<String, Integer> values   = new HashMap<>();
+        Map<String, String>  contents = new HashMap<>();
+
+        String noBlocks = resolveBlocks(src, values, contents);
+        String out      = replaceAll(noBlocks, values);
+
+        // ── NEW: custom-tag replacement pass ───────────────────────────
+        for (CustomTagModel def : CustomTagManager.getInstance().getTags()) {
+            String raw = def.getName().trim();
+            // strip angle-brackets if the user included them
+            if (raw.startsWith("<")  && raw.endsWith(">")) {
+                raw = raw.substring(1, raw.length()-1).trim();
+            }
+            if (raw.isEmpty()) continue;
+
+            Pattern p = Pattern.compile("<" + Pattern.quote(raw) + "_([0-9]+)>");
+            Matcher m = p.matcher(out);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                String id    = m.group(1);
+                String block = contents.getOrDefault(id, "");
+                String repl  = JSEngine.runTagEngine(def.getScript(), block);
+                m.appendReplacement(sb, Matcher.quoteReplacement(repl));
+            }
+            m.appendTail(sb);
+            out = sb.toString();
+        }
+
         return out.getBytes(StandardCharsets.ISO_8859_1);
     }
 
-    private static String resolveBlocks(String text, Map<String, Integer> val) {
+    private static String resolveBlocks(String text,
+                                        Map<String, Integer> val,
+                                        Map<String, String>  contents) {
         StringBuilder out = new StringBuilder();
-        int cursor = 0;
-        int len = text.length();
+        int cursor = 0, len = text.length();
 
         while (true) {
             Matcher mStart = START.matcher(text).region(cursor, len);
@@ -74,8 +105,7 @@ public final class PlaceholderEngine {
             }
             out.append(text, cursor, mStart.start());
             String id = mStart.group(1);
-            int depth = 1;
-            int scan = mStart.end();
+            int depth = 1, scan = mStart.end();
 
             while (depth > 0) {
                 Matcher nextS = START.matcher(text).region(scan, len);
@@ -92,9 +122,10 @@ public final class PlaceholderEngine {
                     depth--;
                     if (depth == 0) {
                         String inner = text.substring(mStart.end(), ePos);
-                        inner = resolveBlocks(inner, val);
+                        inner = resolveBlocks(inner, val, contents);
                         inner = replaceReadyRepeats(inner, val);
                         val.put(id, inner.length());
+                        contents.put(id, inner);                // <─ RECORD raw text
                         out.append(inner);
                         cursor = nextE.end();
                     } else {
@@ -103,6 +134,7 @@ public final class PlaceholderEngine {
                 }
             }
         }
+
         return out.toString();
     }
 

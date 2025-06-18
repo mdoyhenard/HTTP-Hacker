@@ -2,7 +2,7 @@ package httpraider.controller;
 
 import burp.api.montoya.http.HttpService;
 import extension.ToolsManager;
-import httpraider.controller.tools.PlaceholderEngine;
+import httpraider.controller.engines.TagEngine;
 import httpraider.model.ConnectionSettingsModel;
 import httpraider.model.StreamModel;
 import httpraider.view.menuBars.ConnectionBar;
@@ -111,8 +111,8 @@ public final class StreamController extends AbstractUIController<StreamModel, St
                     return;
                 }
                 if (tagsEnabled){
-                    int valid = PlaceholderEngine.validate(request);
-                    if (valid==PlaceholderEngine.CORRECT) out.write(PlaceholderEngine.resolve(request));
+                    int valid = TagEngine.validate(request);
+                    if (valid== TagEngine.CORRECT) out.write(TagEngine.resolve(request));
                     else {
                         runOnEDT(() -> view.setResponseQueue(("<!--ERROR procesing the tag at index: "+valid+" -->").getBytes()));
                         disconnect();
@@ -121,7 +121,7 @@ public final class StreamController extends AbstractUIController<StreamModel, St
                 }
                 else out.write(request);
                 out.flush();
-                runOnEDT(() -> view.addRequestQueueBytes(tagsEnabled ? PlaceholderEngine.resolve(request) : request));
+                runOnEDT(() -> view.addRequestQueueBytes(tagsEnabled ? TagEngine.resolve(request) : request));
             } catch (Exception ex) {
                 runOnEDT(() -> view.setRequestQueue("<!--ERROR SENDING REQUEST DATA-->" + Arrays.toString(ex.getStackTrace())));
                 disconnect();

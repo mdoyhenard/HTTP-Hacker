@@ -1,4 +1,4 @@
-package httpraider.view.tabs;
+package httpraider.view.components;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;

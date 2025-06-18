@@ -1,4 +1,4 @@
-package httpraider.controller;
+package httpraider.controller.tools;
 
 import javax.swing.*;
 

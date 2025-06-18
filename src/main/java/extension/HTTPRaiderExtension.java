@@ -4,6 +4,7 @@ import burp.api.montoya.BurpExtension;
 import burp.api.montoya.EnhancedCapability;
 import burp.api.montoya.MontoyaApi;
 
+import javax.swing.*;
 import java.awt.*;
 import java.util.Set;
 

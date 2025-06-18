@@ -2,7 +2,6 @@ package httpraider.view.panels;
 
 import extension.HTTPRaiderExtension;
 import httpraider.view.menuBars.ConnectionBar;
-import httpraider.view.menuBars.EditorToolsPanel;
 import httpraider.view.menuBars.InspectorBar;
 import burp.api.montoya.ui.editor.EditorOptions;
 import burp.api.montoya.ui.editor.HttpRequestEditor;

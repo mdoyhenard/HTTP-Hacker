@@ -58,9 +58,6 @@ public class NetworkPanel extends JPanel {
         repaint();
     }
 
-    /**
-     * Swap in a vertical split: [ canvas+bar ] over [ leftEditor | rightEditor ].
-     */
     public void showHttpEditors(HTTPEditorPanel<?> left, HTTPEditorPanel<?> right) {
         // first, create the horizontal split of the two editors
         JSplitPane httpEditorSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);

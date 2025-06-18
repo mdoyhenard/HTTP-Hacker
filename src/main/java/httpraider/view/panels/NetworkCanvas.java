@@ -1,5 +1,8 @@
 package httpraider.view.panels;
 
+import httpraider.view.components.ConnectionLine;
+import httpraider.view.components.ProxyComponent;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseListener;
@@ -9,17 +12,17 @@ import java.util.List;
 
 public class NetworkCanvas extends JPanel {
 
-    private final Map<String, ProxyView> proxyViews;
-    private final List<ConnectionView> connectionViews;
-    private ProxyView connectStartProxy;
+    private final Map<String, ProxyComponent> proxyViews;
+    private final List<ConnectionLine> connectionLines;
+    private ProxyComponent connectStartProxy;
     private Point mousePoint;
-    private ConnectionView highlightedConnection;
+    private ConnectionLine highlightedConnection;
     private Point pan = new Point(0, 0);
 
     public NetworkCanvas() {
         super(null);
         proxyViews = new HashMap<>();
-        connectionViews = new ArrayList<>();
+        connectionLines = new ArrayList<>();
         setBackground(new Color(252, 252, 255, 255));
         setFocusable(true);
     }
@@ -32,9 +35,9 @@ public class NetworkCanvas extends JPanel {
         addMouseMotionListener(l);
     }
 
-    public ConnectionView getConnectionAt(Point p) {
+    public ConnectionLine getConnectionAt(Point p) {
         double tolerance = 7.0;
-        for (ConnectionView cv : connectionViews) {
+        for (ConnectionLine cv : connectionLines) {
             Point p1 = cv.getFrom().getCenter();
             Point p2 = cv.getTo().getCenter();
             double dist = ptSegDist(p1.x, p1.y, p2.x, p2.y, p.x, p.y);
@@ -52,11 +55,11 @@ public class NetworkCanvas extends JPanel {
         return Point.distance(projX, projY, px, py);
     }
 
-    public ConnectionView getHighlightedConnection() {
+    public ConnectionLine getHighlightedConnection() {
         return highlightedConnection;
     }
 
-    public void setHighlightedConnection(ConnectionView cv) {
+    public void setHighlightedConnection(ConnectionLine cv) {
         if (highlightedConnection != null && highlightedConnection != cv) {
             highlightedConnection.setHighlighted(false);
         }
@@ -77,7 +80,7 @@ public class NetworkCanvas extends JPanel {
         return pan;
     }
 
-    public void addProxyView(String id, ProxyView pv, Point location) {
+    public void addProxyView(String id, ProxyComponent pv, Point location) {
         proxyViews.put(id, pv);
         pv.setLocation(location);
         add(pv);
@@ -85,41 +88,41 @@ public class NetworkCanvas extends JPanel {
     }
 
     public void removeProxyView(String id) {
-        ProxyView pv = proxyViews.remove(id);
+        ProxyComponent pv = proxyViews.remove(id);
         if (pv != null) {
             remove(pv);
             repaint();
         }
     }
 
-    public ProxyView getProxyView(String id) {
+    public ProxyComponent getProxyView(String id) {
         return proxyViews.get(id);
     }
 
-    public Collection<ProxyView> getProxyViews() {
+    public Collection<ProxyComponent> getProxyViews() {
         return proxyViews.values();
     }
 
-    public void addConnectionView(ConnectionView cv) {
-        connectionViews.add(cv);
+    public void addConnectionView(ConnectionLine cv) {
+        connectionLines.add(cv);
         repaint();
     }
 
-    public void removeConnectionView(ConnectionView cv) {
-        connectionViews.remove(cv);
+    public void removeConnectionView(ConnectionLine cv) {
+        connectionLines.remove(cv);
         repaint();
     }
 
-    public List<ConnectionView> getConnectionViews() {
-        return connectionViews;
+    public List<ConnectionLine> getConnectionViews() {
+        return connectionLines;
     }
 
-    public void setConnectStartProxy(ProxyView pv) {
+    public void setConnectStartProxy(ProxyComponent pv) {
         connectStartProxy = pv;
         repaint();
     }
 
-    public ProxyView getConnectStartProxy() {
+    public ProxyComponent getConnectStartProxy() {
         return connectStartProxy;
     }
 
@@ -135,7 +138,7 @@ public class NetworkCanvas extends JPanel {
     public void clear() {
         removeAll();
         proxyViews.clear();
-        connectionViews.clear();
+        connectionLines.clear();
         highlightedConnection = null;
         repaint();
     }
@@ -145,7 +148,7 @@ public class NetworkCanvas extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
 
-        for (ConnectionView cv : connectionViews) {
+        for (ConnectionLine cv : connectionLines) {
             cv.paintLine(g2);
         }
 

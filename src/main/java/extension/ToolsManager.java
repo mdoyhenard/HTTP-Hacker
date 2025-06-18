@@ -2,7 +2,7 @@ package extension;
 
 import httpraider.controller.StreamController;
 import httpraider.controller.tools.EditorToolController;
-import httpraider.controller.ToolControllerInterface;
+import httpraider.controller.tools.ToolControllerInterface;
 import httpraider.view.menuBars.InspectorBar;
 import httpraider.view.panels.StreamPanel;
 
