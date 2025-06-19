@@ -1,11 +1,11 @@
 package httpraider.controller;
 
-public abstract class AbstractUIController<M, V> {
+public abstract class AbstractController<M, V> {
 
     protected M model;
     protected V view;
 
-    protected AbstractUIController(M model, V view) {
+    protected AbstractController(M model, V view) {
         this.model = model;
         this.view  = view;
     }

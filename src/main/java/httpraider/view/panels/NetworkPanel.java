@@ -66,7 +66,7 @@ public class NetworkPanel extends JPanel {
         // then stack that under our original centerPanel
         JSplitPane vertical = new JSplitPane(JSplitPane.VERTICAL_SPLIT, centerPanel, httpEditorSplit);
         vertical.setResizeWeight(0.6);
-        SwingUtilities.invokeLater(() -> vertical.setDividerLocation(0.6));
+        //SwingUtilities.invokeLater(() -> vertical.setDividerLocation(0.6));
 
         // swap it in
         remove(currentCenter);

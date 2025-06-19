@@ -106,14 +106,6 @@ public class NetworkController {
         updateProxyBarVisibility();
     }
 
-    /**
-     * Layout algorithm:
-     * 1) BFS from client to assign each proxy a base 'depth' and build a symmetric tree for y‐indices.
-     * 2) Place any unconnected proxies to the right, picking the first free row.
-     * 3) Find any proxy D that sits at the same depth as two neighbors B,C which themselves are connected:
-     *    bump D one column to the right (and move to the nearest free row if needed).
-     * 4) Final (x,y) = (baseX + depth*gapX, baseY + yIndex*gapY).
-     */
     private Map<String, Point> generateLayout(List<ProxyModel> proxies) {
         int baseX = 50, gapX = 220, gapY = 120, baseY = gapY;
 
@@ -134,9 +126,9 @@ public class NetworkController {
 
         // 3) BFS from client → parent/children + base level
         Map<String, List<String>> children = new HashMap<>();
-        Map<String, Integer> level           = new HashMap<>();
-        Set<String> visited                   = new HashSet<>();
-        Queue<String> queue                   = new LinkedList<>();
+        Map<String, Integer> level = new HashMap<>();
+        Set<String> visited = new HashSet<>();
+        Queue<String> queue = new LinkedList<>();
         queue.add(clientId);
         level.put(clientId, 0);
         visited.add(clientId);
@@ -312,7 +304,6 @@ public class NetworkController {
             public void changedUpdate(DocumentEvent e) { update(); }
         });
 
-// BasePath ↔ model
         proxyBar.addBasePathListener(new DocumentListener() {
             private void update() {
                 if (selectedProxyId != null) {
@@ -324,7 +315,6 @@ public class NetworkController {
             public void changedUpdate(DocumentEvent e) { update(); }
         });
 
-// Parsing-code button
         proxyBar.addParsingCodeListener(e -> {
             if (selectedProxyId == null) return;
             ProxyModel pm = model.getProxy(selectedProxyId);
@@ -339,7 +329,6 @@ public class NetworkController {
             }
         });
 
-// Forwarding-code button
         proxyBar.addForwardingCodeListener(e -> {
             if (selectedProxyId == null) return;
             ProxyModel pm = model.getProxy(selectedProxyId);
@@ -354,14 +343,12 @@ public class NetworkController {
             }
         });
 
-// Show-in-streams toggle
         proxyBar.addShowInStreamsListener(e -> {
             // listener stub: proxy toggled; behavior to implement later
             boolean on = ((JToggleButton)e.getSource()).isSelected();
             System.out.println("Show-in-streams for " + selectedProxyId + ": " + on);
         });
 
-        // DomainName ↔ model
         proxyBar.addDomainNameListener(new DocumentListener() {
             private void update() {
                 if (selectedProxyId != null) {
@@ -405,6 +392,9 @@ public class NetworkController {
                     connectStartProxy = null;
                     canvas.setConnectStartProxy(null);
                     canvas.setMousePoint(null);
+                    if (selectedProxyId != null){
+                        selectProxy(selectedProxyId);
+                    }
                     return;
                 }
                 if (!isConnecting && !pv.isClient()) {
@@ -610,6 +600,9 @@ public class NetworkController {
             );
             model.removeConnection(cm.getFromId(), cm.getToId());
             reloadAll(false);
+            if (selectedProxyId != null){
+                selectProxy(selectedProxyId);
+            }
         });
         menu.add(del);
         menu.show(canvas, x, y);

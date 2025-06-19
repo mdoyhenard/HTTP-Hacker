@@ -12,7 +12,7 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SessionController extends AbstractUIController<SessionModel, SessionPanel> {
+public final class SessionController extends AbstractController<SessionModel, SessionPanel> {
 
     private static final String KEY_NETWORK = "HTTPRaider.networks";
     private final List<StreamController> streamControllers = new ArrayList<>();

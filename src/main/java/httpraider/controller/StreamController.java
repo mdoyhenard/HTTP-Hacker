@@ -17,7 +17,7 @@ import java.net.Socket;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 
-public final class StreamController extends AbstractUIController<StreamModel, StreamPanel> {
+public final class StreamController extends AbstractController<StreamModel, StreamPanel> {
 
     private Socket socket;
     private BufferedInputStream in;
