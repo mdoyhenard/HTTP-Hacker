@@ -47,10 +47,6 @@ public class HTTPEditorPanel<T extends Editor> extends JPanel {
         switchButton = null;
     }
 
-    private T getEditor(){ return editor; }
-
-    private Component getUiComponent(){ return editor.uiComponent(); }
-
     public void setName(String text){ name.setText(text); }
 
     public java.util.Optional<burp.api.montoya.ui.Selection> getSelection(){
@@ -131,5 +127,11 @@ public class HTTPEditorPanel<T extends Editor> extends JPanel {
                 })
         );
     }
+
+    // In your HTTPEditorPanel<T extends Editor> class:
+    public void addEditorFocusListener(java.awt.event.FocusListener listener) {
+        editor.uiComponent().addFocusListener(listener);
+    }
+
 
 }

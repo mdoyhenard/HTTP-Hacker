@@ -63,7 +63,7 @@ public class ProxyBar extends JPanel {
         content.add(Box.createVerticalStrut(10));
 
         // Buttons
-        parsingButton = new JButton("Edit parsing code");
+        parsingButton = new JButton("HTTP Parser");
         parsingButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(parsingButton);
 

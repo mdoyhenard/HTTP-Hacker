@@ -1,3 +1,4 @@
+// file: httpraider/model/network/ProxyModel.java
 package httpraider.model.network;
 
 import java.io.Serial;
@@ -22,7 +23,17 @@ public class ProxyModel implements Serializable {
     private Map<String, String> forwardingRules;
     private boolean isClient;
 
-    public ProxyModel(String id, String domainName, String description, String basePath, String parsingCode, String interpretationCode, String forwardingCode, Map<String, String> forwardingRules) {
+    private HTTPParserSettings parserSettings;
+    private ParsingMode parserMode;
+
+    public ProxyModel(String id,
+                      String domainName,
+                      String description,
+                      String basePath,
+                      String parsingCode,
+                      String interpretationCode,
+                      String forwardingCode,
+                      Map<String, String> forwardingRules) {
         this.id = id == null ? UUID.randomUUID().toString() : id;
         this.domainName = domainName;
         this.description = description;
@@ -32,6 +43,8 @@ public class ProxyModel implements Serializable {
         this.forwardingCode = forwardingCode;
         this.forwardingRules = forwardingRules;
         this.isClient = false;
+        this.parserSettings = new HTTPParserSettings();
+        this.parserMode = ParsingMode.CONFIG;
     }
 
     public ProxyModel(String domainName) {
@@ -54,55 +67,71 @@ public class ProxyModel implements Serializable {
         return domainName;
     }
 
-    public String getDescription() {
-        return description;
-    }
-
-    public String getBasePath() {
-        return basePath;
-    }
-
-    public String getParsingCode() {
-        return parsingCode;
-    }
-
-    public String getInterpretationCode() {
-        return interpretationCode;
-    }
-
-    public String getForwardingCode() {
-        return forwardingCode;
-    }
-
-    public Map<String, String> getForwardingRules() {
-        return forwardingRules;
-    }
-
     public void setDomainName(String domainName) {
         this.domainName = domainName;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
     }
 
+    public String getBasePath() {
+        return basePath;
+    }
+
     public void setBasePath(String basePath) {
         this.basePath = basePath;
+    }
+
+    public String getParsingCode() {
+        return parsingCode;
     }
 
     public void setParsingCode(String parsingCode) {
         this.parsingCode = parsingCode;
     }
 
+    public String getInterpretationCode() {
+        return interpretationCode;
+    }
+
     public void setInterpretationCode(String interpretationCode) {
         this.interpretationCode = interpretationCode;
+    }
+
+    public String getForwardingCode() {
+        return forwardingCode;
     }
 
     public void setForwardingCode(String forwardingCode) {
         this.forwardingCode = forwardingCode;
     }
 
+    public Map<String, String> getForwardingRules() {
+        return forwardingRules;
+    }
+
     public void setForwardingRules(Map<String, String> forwardingRules) {
         this.forwardingRules = forwardingRules;
+    }
+
+    public HTTPParserSettings getParserSettings() {
+        return parserSettings;
+    }
+
+    public void setParserSettings(HTTPParserSettings parserSettings) {
+        this.parserSettings = parserSettings;
+    }
+
+    public ParsingMode getParserMode() {
+        return parserMode;
+    }
+
+    public void setParserMode(ParsingMode parserMode) {
+        this.parserMode = parserMode;
     }
 }

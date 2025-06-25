@@ -59,16 +59,12 @@ public class NetworkPanel extends JPanel {
     }
 
     public void showHttpEditors(HTTPEditorPanel<?> left, HTTPEditorPanel<?> right) {
-        // first, create the horizontal split of the two editors
         JSplitPane httpEditorSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         httpEditorSplit.setResizeWeight(0.5);
 
-        // then stack that under our original centerPanel
         JSplitPane vertical = new JSplitPane(JSplitPane.VERTICAL_SPLIT, centerPanel, httpEditorSplit);
         vertical.setResizeWeight(0.6);
-        //SwingUtilities.invokeLater(() -> vertical.setDividerLocation(0.6));
 
-        // swap it in
         remove(currentCenter);
         currentCenter = vertical;
         add(currentCenter, BorderLayout.CENTER);
@@ -77,9 +73,6 @@ public class NetworkPanel extends JPanel {
         repaint();
     }
 
-    /**
-     * Remove the split and restore just the canvas+bar.
-     */
     public void hideHttpEditors() {
         remove(currentCenter);
         currentCenter = centerPanel;

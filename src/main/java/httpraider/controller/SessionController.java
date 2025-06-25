@@ -34,7 +34,7 @@ public final class SessionController extends AbstractController<SessionModel, Se
             networkModel = new NetworkModel();
             model.setNetworkModel(networkModel);
         }
-        networkController = new NetworkController(networkModel, sessionPanel.getNetworkPanel());
+        networkController = new NetworkController(networkModel, sessionPanel.getNetworkPanel(), streamControllers);
         HTTPRaiderExtension.API.extension().registerUnloadingHandler(this::saveAll);
         updateStreamsFromModel();
     }
