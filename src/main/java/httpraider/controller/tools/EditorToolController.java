@@ -5,7 +5,7 @@ import httpraider.controller.StreamController;
 import httpraider.model.CustomTagModel;
 import httpraider.view.panels.JSCodeEditorPanel;
 import httpraider.view.panels.EditorToolsPanel;
-import httpraider.view.panels.HTTPEditorPanel;
+import httpraider.view.panels.HttpEditorPanel;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -26,7 +26,7 @@ public final class EditorToolController implements ToolControllerInterface, Cust
     private final static int CL_ID = 4;
 
     private final EditorToolsPanel view;
-    private final HTTPEditorPanel<HttpRequestEditor> editor;
+    private final HttpEditorPanel<HttpRequestEditor> editor;
     private final StreamController streamController;
     private final Timer timer;
     private final CustomTagManager tagManager = CustomTagManager.getInstance();
@@ -57,7 +57,7 @@ public final class EditorToolController implements ToolControllerInterface, Cust
     };
 
     public EditorToolController(EditorToolsPanel view,
-                                HTTPEditorPanel<HttpRequestEditor> editor,
+                                HttpEditorPanel<HttpRequestEditor> editor,
                                 StreamController streamController) {
         this.view = view;
         this.editor = editor;
@@ -199,8 +199,7 @@ public final class EditorToolController implements ToolControllerInterface, Cust
                     "Custom Tag Code",
                     Dialog.ModalityType.APPLICATION_MODAL
             );
-            JSCodeEditorPanel area = new JSCodeEditorPanel();
-            area.setCode(def.getScript());
+            JSCodeEditorPanel area = new JSCodeEditorPanel(def.getScript());
             JScrollPane sp = new JScrollPane(area);
             JButton save = new JButton("Save");
             JButton cancel = new JButton("Cancel");

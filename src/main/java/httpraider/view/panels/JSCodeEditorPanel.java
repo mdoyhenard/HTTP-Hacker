@@ -78,6 +78,7 @@ public class JSCodeEditorPanel extends JPanel {
     private final Style defaultStyle;
 
     public JSCodeEditorPanel() { this(""); }
+
     public JSCodeEditorPanel(String initialCode) {
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(800, 600));

@@ -7,9 +7,11 @@ import extension.HTTPRaiderExtension;
 import httpraider.model.network.ConnectionModel;
 import httpraider.model.network.NetworkModel;
 import httpraider.model.network.ProxyModel;
+import httpraider.view.components.ComboItem;
 import httpraider.view.components.ConnectionLine;
 import httpraider.view.components.ProxyComponent;
-import httpraider.view.panels.HTTPEditorPanel;
+import httpraider.view.components.StreamComboBox;
+import httpraider.view.panels.HttpEditorPanel;
 import httpraider.view.panels.NetworkCanvas;
 import httpraider.view.panels.NetworkPanel;
 import httpraider.view.menuBars.NetworkBar;
@@ -43,6 +45,7 @@ public class NetworkController {
     private boolean isConnecting;
     private String selectedProxyId;
     private boolean useForwardedRequest;
+    private int selectedReqId = 0;
 
     public static final int ICON_WIDTH = 47;
     public static final int ICON_HEIGHT = 65;
@@ -496,13 +499,24 @@ public class NetworkController {
 
         List<ProxyModel> proxiesToClient = getConnectionPathToClient(id);
 
-        HTTPEditorPanel<HttpRequestEditor> reqEditor =
-                new HTTPEditorPanel<>("Base Request",
+        HttpEditorPanel<HttpRequestEditor> reqEditor =
+                new HttpEditorPanel<>("Base Request",
                         HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
-        HTTPEditorPanel<WebSocketMessageEditor> parsedReq =
-                new HTTPEditorPanel<>("Parsed Request",
+        HttpEditorPanel<WebSocketMessageEditor> parsedReq =
+                new HttpEditorPanel<>("Parsed Request",
                         HTTPRaiderExtension.API.userInterface().createWebSocketMessageEditor(EditorOptions.READ_ONLY));
         useForwardedRequest = false;
+
+        StreamComboBox<byte[]> streamsBox = new StreamComboBox<>("Request from Stream");
+        streamsBox.addItem(new ComboItem<>("Base Req", ("GET /"+proxyBar.getBasePath()+" HTTP/1.1\r\nHost:"+proxyBar.getDomainName()+"\r\nContent-Length: 10\r\n\r\n0123456789").getBytes()));
+        for (StreamController sc : streamControllers){
+            streamsBox.addItem(new ComboItem<>(sc.getName(), sc.getRequest()));
+        }
+
+        reqEditor.setBytes(streamsBox.getValueAt(selectedReqId));
+        streamsBox.setSelectedIndex(selectedReqId);
+
+        reqEditor.setComponent(streamsBox, e->{ selectedReqId = streamsBox.getSelectedIndex(); reqEditor.setBytes(streamsBox.getSelectedValue()); });
 
         if (proxiesToClient != null && !proxiesToClient.isEmpty()) parsedReq.setSwitch("Use transformations", e -> {useForwardedRequest = !useForwardedRequest;});
         view.showHttpEditors(reqEditor, parsedReq);

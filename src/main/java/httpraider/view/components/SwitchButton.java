@@ -3,7 +3,7 @@ package httpraider.view.components;
 import java.awt.*;
 import javax.swing.*;
 
-public class SwitchButton extends JPanel {
+public class SwitchButton extends JPanel implements ActionComponent{
     private final JLabel label;
     private final JToggleButton toggle;
 
@@ -50,6 +50,7 @@ public class SwitchButton extends JPanel {
         add(label);
         add(Box.createHorizontalStrut(8));
         add(toggle);
+        add(Box.createHorizontalStrut(8));
     }
 
     public boolean isSelected() {

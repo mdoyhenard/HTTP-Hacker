@@ -16,6 +16,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
+import java.util.List;
 
 public final class StreamController extends AbstractController<StreamModel, StreamPanel> {
 
@@ -281,6 +282,14 @@ public final class StreamController extends AbstractController<StreamModel, Stre
             throw new RuntimeException(ex);
         }
         return ref.get();
+    }
+
+    public byte[] getRequest(){
+        return view.getClientRequest();
+    }
+
+    public String getName(){
+        return model.getName();
     }
 
 }

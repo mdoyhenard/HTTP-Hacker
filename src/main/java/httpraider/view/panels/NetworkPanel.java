@@ -58,7 +58,7 @@ public class NetworkPanel extends JPanel {
         repaint();
     }
 
-    public void showHttpEditors(HTTPEditorPanel<?> left, HTTPEditorPanel<?> right) {
+    public void showHttpEditors(HttpEditorPanel<?> left, HttpEditorPanel<?> right) {
         JSplitPane httpEditorSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
         httpEditorSplit.setResizeWeight(0.5);
 

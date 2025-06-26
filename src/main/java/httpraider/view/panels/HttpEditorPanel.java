@@ -5,6 +5,8 @@ import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.ui.editor.Editor;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import burp.api.montoya.ui.editor.WebSocketMessageEditor;
+import httpraider.view.components.ActionComponent;
+import httpraider.view.components.StreamComboBox;
 import httpraider.view.components.SwitchButton;
 
 import javax.swing.*;
@@ -15,18 +17,18 @@ import java.nio.ByteBuffer;
 
 import static javax.swing.SwingUtilities.invokeLater;
 
-public class HTTPEditorPanel<T extends Editor> extends JPanel {
+public class HttpEditorPanel<T extends Editor> extends JPanel {
 
     private final JPanel topPanel;
     private final JLabel name;
     private final T editor;
-    private SwitchButton switchButton;
+    private ActionComponent component;
 
-    public HTTPEditorPanel(String text, T editor){
+    public HttpEditorPanel(String text, T editor){
         super(new BorderLayout());
         topPanel = new JPanel(new BorderLayout());
         this.editor = editor;
-        switchButton = null;
+        component = null;
         name = new JLabel(text);
         name.setFont(name.getFont().deriveFont(Font.BOLD, 13f));
         topPanel.setBorder(BorderFactory.createEmptyBorder(7, 12, 5, 0));
@@ -35,16 +37,24 @@ public class HTTPEditorPanel<T extends Editor> extends JPanel {
         add(this.editor.uiComponent(), BorderLayout.CENTER);
     }
 
-    public void setSwitch(String text, ActionListener l){
-        if (switchButton != null) topPanel.remove(switchButton);
-        switchButton =  new SwitchButton(text);
-        switchButton.addActionListener(l);
-        topPanel.add(switchButton, BorderLayout.EAST);
+    public void setComponent(ActionComponent component, ActionListener l){
+        if (this.component != null) topPanel.remove((JComponent)this.component);
+        this.component =  component;
+        this.component.addActionListener(l);
+        topPanel.add((JComponent)component, BorderLayout.EAST);
     }
 
-    public void removeSwitch(){
-        if (switchButton != null) topPanel.remove(switchButton);
-        switchButton = null;
+    public void removeComponent(){
+        if (component != null) topPanel.remove((JComponent) component);
+        component = null;
+    }
+
+    public void setStreamComboBox(StreamComboBox comboBox, ActionListener l){
+        setComponent(comboBox, l);
+    }
+
+    public void setSwitch(String text, ActionListener l){
+        setComponent(new SwitchButton(text), l);
     }
 
     public void setName(String text){ name.setText(text); }

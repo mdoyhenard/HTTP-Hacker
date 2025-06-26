@@ -19,10 +19,10 @@ public class StreamPanel extends JPanel {
     private final ConnectionBar connectionBar;
     private final InspectorBar inspectorBar;
     private final EditorToolsPanel editorToolsGadget;
-    private final HTTPEditorPanel<HttpRequestEditor> clientRequest;
-    private final HTTPEditorPanel<HttpRequestEditor> requestQueue;
-    private final HTTPEditorPanel<WebSocketMessageEditor> responseQueue;
-    private final ArrayList<HTTPEditorPanel<HttpRequestEditor>> proxyRequests;
+    private final HttpEditorPanel<HttpRequestEditor> clientRequest;
+    private final HttpEditorPanel<HttpRequestEditor> requestQueue;
+    private final HttpEditorPanel<WebSocketMessageEditor> responseQueue;
+    private final ArrayList<HttpEditorPanel<HttpRequestEditor>> proxyRequests;
 
     public StreamPanel() {
         super(new BorderLayout());
@@ -33,9 +33,9 @@ public class StreamPanel extends JPanel {
         editorToolsGadget = new EditorToolsPanel();
         add(inspectorBar, BorderLayout.EAST);
         proxyRequests = new ArrayList<>();
-        clientRequest = new HTTPEditorPanel<>("Client Request", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
-        requestQueue = new HTTPEditorPanel<>("Request Queue", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY));
-        responseQueue = new HTTPEditorPanel<>("Response Queue", HTTPRaiderExtension.API.userInterface().createWebSocketMessageEditor(EditorOptions.READ_ONLY));
+        clientRequest = new HttpEditorPanel<>("Client Request", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
+        requestQueue = new HttpEditorPanel<>("Request Queue", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY));
+        responseQueue = new HttpEditorPanel<>("Response Queue", HTTPRaiderExtension.API.userInterface().createWebSocketMessageEditor(EditorOptions.READ_ONLY));
         setState(ConnectionBar.State.DISCONNECTED);
         setBaseView();
     }
@@ -44,7 +44,7 @@ public class StreamPanel extends JPanel {
         return editorToolsGadget;
     }
 
-    public HTTPEditorPanel<HttpRequestEditor> getClientRequestEditor() {
+    public HttpEditorPanel<HttpRequestEditor> getClientRequestEditor() {
         return clientRequest;
     }
 
