@@ -17,14 +17,10 @@ public class ProxyModel implements Serializable {
     private String domainName;
     private String description;
     private String basePath;
-    private String parsingCode;
-    private String interpretationCode;
-    private String forwardingCode;
-    private Map<String, String> forwardingRules;
     private boolean isClient;
 
     private HTTPParserSettings parserSettings;
-    private ParsingMode parserMode;
+    private HTTPParserSettings forwardingSettings;
 
     public ProxyModel(String id,
                       String domainName,
@@ -38,13 +34,9 @@ public class ProxyModel implements Serializable {
         this.domainName = domainName;
         this.description = description;
         this.basePath = basePath;
-        this.parsingCode = parsingCode;
-        this.interpretationCode = interpretationCode;
-        this.forwardingCode = forwardingCode;
-        this.forwardingRules = forwardingRules;
         this.isClient = false;
         this.parserSettings = new HTTPParserSettings();
-        this.parserMode = ParsingMode.CONFIG;
+        this.forwardingSettings = new HTTPParserSettings();
     }
 
     public ProxyModel(String domainName) {
@@ -87,38 +79,6 @@ public class ProxyModel implements Serializable {
         this.basePath = basePath;
     }
 
-    public String getParsingCode() {
-        return parsingCode;
-    }
-
-    public void setParsingCode(String parsingCode) {
-        this.parsingCode = parsingCode;
-    }
-
-    public String getInterpretationCode() {
-        return interpretationCode;
-    }
-
-    public void setInterpretationCode(String interpretationCode) {
-        this.interpretationCode = interpretationCode;
-    }
-
-    public String getForwardingCode() {
-        return forwardingCode;
-    }
-
-    public void setForwardingCode(String forwardingCode) {
-        this.forwardingCode = forwardingCode;
-    }
-
-    public Map<String, String> getForwardingRules() {
-        return forwardingRules;
-    }
-
-    public void setForwardingRules(Map<String, String> forwardingRules) {
-        this.forwardingRules = forwardingRules;
-    }
-
     public HTTPParserSettings getParserSettings() {
         return parserSettings;
     }
@@ -127,11 +87,11 @@ public class ProxyModel implements Serializable {
         this.parserSettings = parserSettings;
     }
 
-    public ParsingMode getParserMode() {
-        return parserMode;
+    public HTTPParserSettings getForwardingSettings() {
+        return forwardingSettings;
+    }
+    public void setForwardingSettings(HTTPParserSettings forwardingSettings) {
+        this.forwardingSettings = forwardingSettings;
     }
 
-    public void setParserMode(ParsingMode parserMode) {
-        this.parserMode = parserMode;
-    }
 }

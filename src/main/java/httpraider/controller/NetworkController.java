@@ -47,6 +47,7 @@ public class NetworkController {
     private String selectedProxyId;
     private boolean useForwardedRequest;
     private int selectedReqId = 0;
+    private HttpParserController parserController;
 
     public static final int ICON_WIDTH = 47;
     public static final int ICON_HEIGHT = 65;
@@ -310,22 +311,23 @@ public class NetworkController {
         proxyBar.addParsingCodeListener(e -> {
             if (selectedProxyId == null) return;
             ProxyController pc = proxyControllers.get(selectedProxyId);
-            HttpParserPanel parserPanel = new HttpParserPanel();
-            parserPanel.setVisible(true);
+            HttpParserPanel panel = new HttpParserPanel();
+            this.parserController = new HttpParserController(
+                    pc.getModel().getParserSettings(),      // or getForwardingSettings()
+                    panel
+            );
+            panel.setVisible(true);
         });
 
         proxyBar.addForwardingCodeListener(e -> {
             if (selectedProxyId == null) return;
             ProxyController pc = proxyControllers.get(selectedProxyId);
-            JTextArea editor = new JTextArea(pc.getForwardingCode(), 20, 60);
-            JScrollPane pane = new JScrollPane(editor);
-            int opt = JOptionPane.showConfirmDialog(
-                    view, pane, "Edit forwarding code",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE
+            HttpParserPanel panel = new HttpParserPanel();
+            this.parserController = new HttpParserController(
+                    pc.getModel().getForwardingSettings(),      // or getForwardingSettings()
+                    panel
             );
-            if (opt == JOptionPane.OK_OPTION) {
-                pc.setForwardingCode(editor.getText());
-            }
+            panel.setVisible(true);
         });
 
         proxyBar.addShowInStreamsListener(e -> {

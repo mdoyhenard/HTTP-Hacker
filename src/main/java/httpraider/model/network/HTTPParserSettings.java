@@ -17,6 +17,7 @@ public class HTTPParserSettings implements Serializable {
     private String codeStep1;
     private String codeStep2;
     private String codeStep3;
+    private ParsingMode mode;
 
     public HTTPParserSettings() {
         this.headerEndSequences = new ArrayList<>();
@@ -30,6 +31,8 @@ public class HTTPParserSettings implements Serializable {
         this.codeStep1 = "";
         this.codeStep2 = "";
         this.codeStep3 = "";
+
+        this.mode = ParsingMode.SETTINGS;
     }
 
     public List<String> getHeaderEndSequences() {
@@ -78,5 +81,13 @@ public class HTTPParserSettings implements Serializable {
 
     public void setCodeStep3(String codeStep3) {
         this.codeStep3 = codeStep3;
+    }
+
+    public ParsingMode getMode() {
+        return mode;
+    }
+
+    public void setMode(ParsingMode mode) {
+        this.mode = mode;
     }
 }

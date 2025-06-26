@@ -126,6 +126,10 @@ public class HttpParserPanel extends JFrame {
         return menuBar;
     }
 
+    public JTabbedPane getTabbedPane() {
+        return tabbedPane;
+    }
+
     public JButton getTestButton() { return testButton; }
     public JButton getSaveButton() { return saveButton; }
     public HttpEditorPanel<HttpRequestEditor> getReqEditorPanel() { return reqEditorPanel; }

@@ -36,14 +36,6 @@ public class ProxyController {
         model.setBasePath(basePath);
     }
 
-    public void setParsingCode(String code) {
-        model.setParsingCode(code);
-    }
-
-    public void setForwardingCode(String code) {
-        model.setForwardingCode(code);
-    }
-
     public String getDomainName() {
         return model.getDomainName();
     }
@@ -54,14 +46,6 @@ public class ProxyController {
 
     public String getBasePath() {
         return model.getBasePath();
-    }
-
-    public String getParsingCode() {
-        return model.getParsingCode();
-    }
-
-    public String getForwardingCode() {
-        return model.getForwardingCode();
     }
 
     public boolean isClient() {
