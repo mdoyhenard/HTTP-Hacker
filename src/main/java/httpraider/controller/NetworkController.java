@@ -12,6 +12,7 @@ import httpraider.view.components.ConnectionLine;
 import httpraider.view.components.ProxyComponent;
 import httpraider.view.components.StreamComboBox;
 import httpraider.view.panels.HttpEditorPanel;
+import httpraider.view.panels.HttpParserPanel;
 import httpraider.view.panels.NetworkCanvas;
 import httpraider.view.panels.NetworkPanel;
 import httpraider.view.menuBars.NetworkBar;
@@ -309,15 +310,8 @@ public class NetworkController {
         proxyBar.addParsingCodeListener(e -> {
             if (selectedProxyId == null) return;
             ProxyController pc = proxyControllers.get(selectedProxyId);
-            JTextArea editor = new JTextArea(pc.getParsingCode(), 20, 60);
-            JScrollPane pane = new JScrollPane(editor);
-            int opt = JOptionPane.showConfirmDialog(
-                    view, pane, "HTTP Parser",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE
-            );
-            if (opt == JOptionPane.OK_OPTION) {
-                pc.setParsingCode(editor.getText());
-            }
+            HttpParserPanel parserPanel = new HttpParserPanel();
+            parserPanel.setVisible(true);
         });
 
         proxyBar.addForwardingCodeListener(e -> {
@@ -508,7 +502,7 @@ public class NetworkController {
         useForwardedRequest = false;
 
         StreamComboBox<byte[]> streamsBox = new StreamComboBox<>("Request from Stream");
-        streamsBox.addItem(new ComboItem<>("Base Req", ("GET /"+proxyBar.getBasePath()+" HTTP/1.1\r\nHost:"+proxyBar.getDomainName()+"\r\nContent-Length: 10\r\n\r\n0123456789").getBytes()));
+        streamsBox.addItem(new ComboItem<>("Base Req", ("GET /"+proxyBar.getBasePath()+" HTTP/1.1\r\nHost: "+proxyBar.getDomainName()+"\r\nContent-Length: 10\r\n\r\n0123456789").getBytes()));
         for (StreamController sc : streamControllers){
             streamsBox.addItem(new ComboItem<>(sc.getName(), sc.getRequest()));
         }
