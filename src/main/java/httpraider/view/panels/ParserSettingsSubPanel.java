@@ -25,12 +25,9 @@ public class ParserSettingsSubPanel extends JPanel {
 
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
-        setBorder(BorderFactory.createCompoundBorder(
-                border,
-                BorderFactory.createTitledBorder(
-                        BorderFactory.createEmptyBorder(), title,
-                        TitledBorder.CENTER, TitledBorder.TOP, getFont().deriveFont(Font.BOLD, 15f)))
-        );
+        setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createMatteBorder(1, 1, 0, 1, Color.GRAY), title,
+                TitledBorder.CENTER, TitledBorder.TOP, getFont().deriveFont(Font.BOLD, 15f)));
         setPreferredSize(new Dimension(preferredWidth, 200));
         setMinimumSize(new Dimension(preferredWidth, 150));
         setMaximumSize(new Dimension(preferredWidth + 40, 1000));

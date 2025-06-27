@@ -15,7 +15,7 @@ public final class InspectorBar extends JPanel {
     private static final Color HEADER_BG       = STRIP_BG;
     private static final Color HEADER_BG_HOVER = new Color(0xEAEAEA);
     private static final Color HEADER_BG_SEL   = new Color(0x35B8CBDC, true);   // ★ lighter blue
-    private static final int   STRIP_WIDTH     = 32;
+    private static final int   STRIP_WIDTH     = 30;
 
     private final JPanel              strip   = new JPanel();
     private final CardLayout          cardsCL = new CardLayout();
@@ -23,7 +23,7 @@ public final class InspectorBar extends JPanel {
     private final Map<Header,String>  header2Card = new HashMap<>();
 
     private Header  activeHeader = null;
-    private boolean expanded      = false;
+    private boolean expanded      = true;
 
     public InspectorBar() {
         super(new BorderLayout());

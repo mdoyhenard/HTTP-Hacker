@@ -1,17 +1,17 @@
 package httpraider.controller;
 
 import httpraider.model.network.BodyLenHeader;
-import httpraider.model.network.HTTPParserSettings;
+import httpraider.model.network.HttpParserModel;
 import httpraider.model.network.ParsingMode;
 import httpraider.view.panels.*;
 
 import java.util.List;
 
 public class HttpParserController {
-    private final HTTPParserSettings settings;
+    private final HttpParserModel settings;
     private final HttpParserPanel parserPanel;
 
-    public HttpParserController(HTTPParserSettings settings, HttpParserPanel parserPanel) {
+    public HttpParserController(HttpParserModel settings, HttpParserPanel parserPanel) {
         this.settings = settings;
         this.parserPanel = parserPanel;
 

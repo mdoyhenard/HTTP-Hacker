@@ -19,8 +19,8 @@ public class ProxyModel implements Serializable {
     private String basePath;
     private boolean isClient;
 
-    private HTTPParserSettings parserSettings;
-    private HTTPParserSettings forwardingSettings;
+    private HttpParserModel parserSettings;
+    private HttpParserModel forwardingSettings;
 
     public ProxyModel(String id,
                       String domainName,
@@ -35,8 +35,8 @@ public class ProxyModel implements Serializable {
         this.description = description;
         this.basePath = basePath;
         this.isClient = false;
-        this.parserSettings = new HTTPParserSettings();
-        this.forwardingSettings = new HTTPParserSettings();
+        this.parserSettings = new HttpParserModel();
+        this.forwardingSettings = new HttpParserModel();
     }
 
     public ProxyModel(String domainName) {
@@ -79,18 +79,18 @@ public class ProxyModel implements Serializable {
         this.basePath = basePath;
     }
 
-    public HTTPParserSettings getParserSettings() {
+    public HttpParserModel getParserSettings() {
         return parserSettings;
     }
 
-    public void setParserSettings(HTTPParserSettings parserSettings) {
+    public void setParserSettings(HttpParserModel parserSettings) {
         this.parserSettings = parserSettings;
     }
 
-    public HTTPParserSettings getForwardingSettings() {
+    public HttpParserModel getForwardingSettings() {
         return forwardingSettings;
     }
-    public void setForwardingSettings(HTTPParserSettings forwardingSettings) {
+    public void setForwardingSettings(HttpParserModel forwardingSettings) {
         this.forwardingSettings = forwardingSettings;
     }
 

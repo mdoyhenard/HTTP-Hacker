@@ -6,7 +6,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class HTTPParserSettings implements Serializable {
+public class HttpParserModel implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -19,14 +19,17 @@ public class HTTPParserSettings implements Serializable {
     private String codeStep3;
     private ParsingMode mode;
 
-    public HTTPParserSettings() {
+    public HttpParserModel() {
         this.headerEndSequences = new ArrayList<>();
-        this.headerEndSequences.add("\r\n\r\n");
+        this.headerEndSequences.add("\\r\\n\\r\\n");
+        this.headerEndSequences.add("\\n\\n");
 
         this.headerSplitSequences = new ArrayList<>();
-        this.headerSplitSequences.add("\r\n");
+        this.headerSplitSequences.add("\\r\\n");
+        this.headerSplitSequences.add("\\n\\n");
 
         this.bodyLenHeaders = new ArrayList<>();
+        this.bodyLenHeaders.add(new BodyLenHeader("Transfer-Encoding:", true));
 
         this.codeStep1 = "";
         this.codeStep2 = "";
