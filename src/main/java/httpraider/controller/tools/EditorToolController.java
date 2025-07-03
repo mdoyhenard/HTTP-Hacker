@@ -64,6 +64,8 @@ public final class EditorToolController implements ToolControllerInterface, Cust
         this.streamController = streamController;
         timer = new Timer(50, e -> refresh());
         view.setEnableTagsListener(e -> streamController.setTagsEnabled(view.tagsEnabled()));
+        view.setTagEnabled(true);
+        streamController.setTagsEnabled(true);
     }
 
     @Override public String id() { return "EDITOR"; }
@@ -82,10 +84,24 @@ public final class EditorToolController implements ToolControllerInterface, Cust
 
     private void refresh() {
         int len = editor.getSelection()
-                .map(s -> s.contents().getBytes().length)
-                .orElse(0);
+                .map(s -> {
+                    byte[] bytes = s.contents().getBytes();
+                    String detail = "";
+                    if (bytes.length == 1) {
+                        detail = ((char) (bytes[0] & 0xFF)) + " (" + String.format("0x%02X", bytes[0] & 0xFF) + ")";
+                    }
+                    view.setSelectedDetail(detail);
+                    return bytes.length;
+                })
+                .orElseGet(() -> {
+                    view.setSelectedDetail("");
+                    return 0;
+                });
         view.setSelectedBytes(len);
     }
+
+
+
 
     private void insertHeader(ActionEvent e) {
         int idx = view.getSelectedHeader();

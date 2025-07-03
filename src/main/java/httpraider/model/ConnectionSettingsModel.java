@@ -11,7 +11,11 @@ public class ConnectionSettingsModel implements Serializable {
     private int port;
     private boolean tls;
 
-    public ConnectionSettingsModel() { }
+    public ConnectionSettingsModel() {
+        host="www.target.com";
+        port=443;
+        tls=true;
+    }
 
     public ConnectionSettingsModel(String host, int port, boolean tls) {
         this.host = host;

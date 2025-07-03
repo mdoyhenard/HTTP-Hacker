@@ -2,7 +2,6 @@ package httpraider.controller;
 
 import httpraider.model.network.BodyLenHeader;
 import httpraider.model.network.HttpParserModel;
-import httpraider.model.network.ParsingMode;
 import httpraider.view.panels.*;
 
 import java.util.List;
@@ -14,14 +13,6 @@ public class HttpParserController {
     public HttpParserController(HttpParserModel settings, HttpParserPanel parserPanel) {
         this.settings = settings;
         this.parserPanel = parserPanel;
-
-        int tabIdx = (settings.getMode() == ParsingMode.CODE) ? 0 : 1;
-        parserPanel.getTabbedPane().setSelectedIndex(tabIdx);
-
-        parserPanel.getTabbedPane().addChangeListener(e -> {
-            int idx = parserPanel.getTabbedPane().getSelectedIndex();
-            settings.setMode(idx == 0 ? ParsingMode.CODE : ParsingMode.SETTINGS);
-        });
 
         installListeners();
         loadFromModel();
@@ -43,6 +34,11 @@ public class HttpParserController {
         settingsPanel.getMessageLengthPanel().setAddButtonListener(e -> {
             settingsPanel.getMessageLengthPanel().addRow();
             updateRemoveListeners(settingsPanel.getMessageLengthPanel());
+        });
+
+        settingsPanel.getChunkLineEndPanel().setAddButtonListener(e -> {
+            settingsPanel.getChunkLineEndPanel().addRow();
+            updateRemoveListeners(settingsPanel.getChunkLineEndPanel());
         });
 
         parserPanel.getSaveButton().addActionListener(e -> saveToModel());
@@ -89,11 +85,20 @@ public class HttpParserController {
                 row.getCheckBox().setSelected(h.isChunkedEncoding());
             }
         }
-        updateRemoveListeners(settingsPanel.getMessageLengthPanel());
+
+        settingsPanel.getChunkLineEndPanel().clearRows();
+        for (String seq : settings.getChunkEndSequences()) {
+            settingsPanel.getChunkLineEndPanel().addRow();
+            List<ParserSettingsRowPanel> rows = settingsPanel.getChunkLineEndPanel().getRows();
+            rows.get(rows.size() - 1).getTextField().setText(seq);
+        }
+        updateRemoveListeners(settingsPanel.getChunkLineEndPanel());
 
         codePanel.setCode1(settings.getCodeStep1());
         codePanel.setCode2(settings.getCodeStep2());
         codePanel.setCode3(settings.getCodeStep3());
+
+        settingsPanel.updateChunkPanelVisibility(); // <-- THIS LINE FIXES YOUR ISSUE
     }
 
     private void saveToModel() {
@@ -103,9 +108,11 @@ public class HttpParserController {
         settings.setHeaderEndSequences(settingsPanel.getHeadersEndPanel().getAllRowTexts());
         settings.setHeaderSplitSequences(settingsPanel.getHeaderSplittingPanel().getAllRowTexts());
         settings.setBodyLenHeaders(settingsPanel.getMessageLengthPanel().getAllBodyLenHeaders());
+        settings.setChunkEndSequences(settingsPanel.getChunkLineEndPanel().getAllRowTexts());
 
         settings.setCodeStep1(codePanel.getCode1());
         settings.setCodeStep2(codePanel.getCode2());
         settings.setCodeStep3(codePanel.getCode3());
     }
+
 }

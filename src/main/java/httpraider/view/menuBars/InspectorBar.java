@@ -59,7 +59,7 @@ public final class InspectorBar extends JPanel {
         h.setSelected(true);
         activeHeader = h;
     }
-    private void expand()   { add(cards, BorderLayout.CENTER); revalidate(); expanded = true; }
+    public void expand()   { add(cards, BorderLayout.CENTER); revalidate(); expanded = true; }
     private void collapse() {
         remove(cards); if (activeHeader!=null) activeHeader.setSelected(false);
         activeHeader = null; revalidate(); repaint(); expanded = false;

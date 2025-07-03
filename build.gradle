@@ -9,6 +9,5 @@ repositories {
 
 dependencies {
     implementation 'net.portswigger.burp.extensions:montoya-api:2025.5'
-    implementation "org.graalvm.sdk:graal-sdk:24.2.1"
-    implementation "org.graalvm.js:js:24.2.1"
+    implementation 'org.mozilla:rhino:1.7.14'
 }

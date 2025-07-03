@@ -1,5 +1,7 @@
 package httpraider.view.panels;
 
+import httpraider.view.components.DragHandleLabel;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -8,13 +10,21 @@ public class ParserSettingsRowPanel extends JPanel {
     private final JCheckBox checkBox;
     private final JButton removeButton;
 
-    public ParserSettingsRowPanel(int fieldSize, boolean hasCheckbox, boolean checkboxDefault) {
+    public ParserSettingsRowPanel(int fieldSize, boolean hasCheckbox, boolean checkboxDefault, boolean draggable) {
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-        setMaximumSize(new Dimension(3000, 36));
+        setMaximumSize(new Dimension(340, 36));
+        setMinimumSize(new Dimension(310, 36));
+        setPreferredSize(new Dimension(340, 36));
         setBorder(BorderFactory.createEmptyBorder(3, 3, 3, 3));
         setBackground(Color.WHITE);
 
-        add(Box.createHorizontalGlue());
+        if (draggable) {
+            DragHandleLabel dragLabel = new DragHandleLabel();
+            add(dragLabel);
+            add(Box.createRigidArea(new Dimension(5,0)));
+        }
+
+        if (!hasCheckbox) {add(Box.createRigidArea(new Dimension(18,0)));}
 
         removeButton = new JButton("–");
         removeButton.setFocusPainted(false);
@@ -23,8 +33,9 @@ public class ParserSettingsRowPanel extends JPanel {
         add(Box.createRigidArea(new Dimension(8,0)));
 
         textField = new JTextField(fieldSize);
-        textField.setMaximumSize(new Dimension(250, 30));
-        textField.setMinimumSize(new Dimension(100, 30));
+        textField.setMaximumSize(new Dimension(90, 30));
+        textField.setMinimumSize(new Dimension(70, 30));
+        textField.setPreferredSize(new Dimension(90, 30));
         textField.setAlignmentX(Component.CENTER_ALIGNMENT);
         add(textField);
 
@@ -37,8 +48,11 @@ public class ParserSettingsRowPanel extends JPanel {
         } else {
             checkBox = null;
         }
-
         add(Box.createHorizontalGlue());
+    }
+
+    public ParserSettingsRowPanel(int fieldSize, boolean hasCheckbox, boolean checkboxDefault) {
+        this(fieldSize, hasCheckbox, checkboxDefault, false);
     }
 
     public JTextField getTextField() { return textField; }

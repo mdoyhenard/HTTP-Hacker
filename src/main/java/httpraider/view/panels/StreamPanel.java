@@ -1,6 +1,7 @@
 package httpraider.view.panels;
 
 import extension.HTTPRaiderExtension;
+import httpraider.view.components.ActionButton;
 import httpraider.view.menuBars.ConnectionBar;
 import httpraider.view.menuBars.InspectorBar;
 import burp.api.montoya.ui.editor.EditorOptions;
@@ -36,8 +37,10 @@ public class StreamPanel extends JPanel {
         clientRequest = new HttpEditorPanel<>("Client Request", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
         requestQueue = new HttpEditorPanel<>("Request Queue", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY));
         responseQueue = new HttpEditorPanel<>("Response Queue", HTTPRaiderExtension.API.userInterface().createWebSocketMessageEditor(EditorOptions.READ_ONLY));
+        setResponseHTTPsearch();
         setState(ConnectionBar.State.DISCONNECTED);
         setBaseView();
+        inspectorBar.expand();
     }
 
     public EditorToolsPanel getEditorToolsPanel() {
@@ -101,16 +104,50 @@ public class StreamPanel extends JPanel {
             JSplitPane req = new JSplitPane(JSplitPane.VERTICAL_SPLIT, clientRequest, requestQueue);
             req.setResizeWeight(0.5);
             JSplitPane main = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, req, responseQueue);
-            main.setResizeWeight(0.5);
             add(main, BorderLayout.CENTER);
+            requestQueue.removeComponent();
+            ActionButton button = new ActionButton("-");
+            requestQueue.setComponent(button, e -> {
+                if (button.getText().equals("-")){
+                    button.setText("+");
+                    req.setDividerLocation(0.95);
+                }
+                else{
+                    button.setText("-");
+                    req.setDividerLocation(0.5);
+                }
+            });
+            main.setResizeWeight(0.6);
+            main.setDividerLocation(0.6);
         });
     }
 
-    public void setProxyView() {
+    public void setExpandedProxyView() {
         invokeLater(() -> {
+            requestQueue.removeComponent();
+
             JSplitPane queues = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, requestQueue, responseQueue);
             queues.setResizeWeight(0.5);
+
             JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, getNestedRequestPane(), queues);
+            main.setResizeWeight(0.5);
+            add(main);
+        });
+    }
+
+    public void setTabbedProxyView() {
+        invokeLater(() -> {
+            requestQueue.removeComponent();
+
+            JSplitPane queues = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, requestQueue, responseQueue);
+            queues.setResizeWeight(0.5);
+
+            JTabbedPane parsedRequests = new JTabbedPane();
+
+            JSplitPane requests = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, clientRequest, parsedRequests);
+            queues.setResizeWeight(0.5);
+
+            JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, requests, queues);
             main.setResizeWeight(0.5);
             add(main);
         });

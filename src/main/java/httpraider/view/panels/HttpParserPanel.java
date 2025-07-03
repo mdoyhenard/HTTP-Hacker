@@ -23,7 +23,7 @@ public class HttpParserPanel extends JFrame {
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         setMinimumSize(new Dimension(1100, 800));
-        setPreferredSize(new Dimension(1200, 850));
+        setPreferredSize(new Dimension(1100, 850));
         setLayout(new BorderLayout());
 
         setJMenuBar(createMenuBar());
@@ -32,8 +32,8 @@ public class HttpParserPanel extends JFrame {
         codePanel = new ParserCodePanel();
         settingsPanel = new ParserSettingsPanel();
 
-        tabbedPane.addTab("Code mode", codePanel);
-        tabbedPane.addTab("Settings mode", settingsPanel);
+        tabbedPane.addTab("Settings", settingsPanel);
+        tabbedPane.addTab("Code", codePanel);
 
         JPanel centerBar = new JPanel(new BorderLayout());
         centerBar.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, new Color(180,180,180)));

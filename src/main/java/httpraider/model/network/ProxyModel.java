@@ -20,27 +20,21 @@ public class ProxyModel implements Serializable {
     private boolean isClient;
 
     private HttpParserModel parserSettings;
-    private HttpParserModel forwardingSettings;
 
     public ProxyModel(String id,
                       String domainName,
                       String description,
-                      String basePath,
-                      String parsingCode,
-                      String interpretationCode,
-                      String forwardingCode,
-                      Map<String, String> forwardingRules) {
+                      String basePath) {
         this.id = id == null ? UUID.randomUUID().toString() : id;
         this.domainName = domainName;
         this.description = description;
         this.basePath = basePath;
         this.isClient = false;
         this.parserSettings = new HttpParserModel();
-        this.forwardingSettings = new HttpParserModel();
     }
 
     public ProxyModel(String domainName) {
-        this(null, domainName, "", "", "", "", "", Map.of());
+        this(null, domainName, "", "");
     }
 
     public String getId() {
@@ -87,11 +81,5 @@ public class ProxyModel implements Serializable {
         this.parserSettings = parserSettings;
     }
 
-    public HttpParserModel getForwardingSettings() {
-        return forwardingSettings;
-    }
-    public void setForwardingSettings(HttpParserModel forwardingSettings) {
-        this.forwardingSettings = forwardingSettings;
-    }
 
 }

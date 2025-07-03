@@ -14,10 +14,10 @@ public class HttpParserModel implements Serializable {
     private List<String> headerEndSequences;
     private List<String> headerSplitSequences;
     private List<BodyLenHeader> bodyLenHeaders;
+    private List<String> chunkEndSequences;
     private String codeStep1;
     private String codeStep2;
     private String codeStep3;
-    private ParsingMode mode;
 
     public HttpParserModel() {
         this.headerEndSequences = new ArrayList<>();
@@ -31,11 +31,13 @@ public class HttpParserModel implements Serializable {
         this.bodyLenHeaders = new ArrayList<>();
         this.bodyLenHeaders.add(new BodyLenHeader("Transfer-Encoding:", true));
 
+        this.chunkEndSequences = new ArrayList<>();
+        this.chunkEndSequences.add("\\r\\n");
+
+
         this.codeStep1 = "";
         this.codeStep2 = "";
         this.codeStep3 = "";
-
-        this.mode = ParsingMode.SETTINGS;
     }
 
     public List<String> getHeaderEndSequences() {
@@ -86,11 +88,11 @@ public class HttpParserModel implements Serializable {
         this.codeStep3 = codeStep3;
     }
 
-    public ParsingMode getMode() {
-        return mode;
+    public List<String> getChunkEndSequences() {
+        return chunkEndSequences;
     }
 
-    public void setMode(ParsingMode mode) {
-        this.mode = mode;
+    public void setChunkEndSequences(List<String> chunkEndSequences) {
+        this.chunkEndSequences = chunkEndSequences;
     }
 }

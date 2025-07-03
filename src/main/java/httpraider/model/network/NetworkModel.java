@@ -15,7 +15,7 @@ public class NetworkModel implements Serializable {
     public NetworkModel() {
         proxies = new LinkedHashMap<>();
         connections = new LinkedHashSet<>();
-        ProxyModel client = new ProxyModel(ProxyModel.CLIENT_ID, "Client", "", "", "", "", "", new HashMap<>());
+        ProxyModel client = new ProxyModel(ProxyModel.CLIENT_ID, "Client", "", "");
         client.setClient(true);
         proxies.put(ProxyModel.CLIENT_ID, client);
     }

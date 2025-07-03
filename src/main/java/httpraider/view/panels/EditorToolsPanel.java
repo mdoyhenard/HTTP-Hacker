@@ -13,6 +13,7 @@ import java.awt.event.ActionListener;
 
 public class EditorToolsPanel extends JPanel {
 
+    private final JLabel selectedDetailLabel = new JLabel("", SwingConstants.CENTER);
     private final JLabel     selectedLabel   = new JLabel("Selected: 0 (0x0)",  SwingConstants.CENTER);
     private final JTextField hexField        = new JTextField(12);
     private final JTextField asciiField      = new JTextField(8);
@@ -237,6 +238,7 @@ public class EditorToolsPanel extends JPanel {
         headerCombo.setSelectedIndex(0);
         enableTags.setHorizontalAlignment(SwingConstants.CENTER);
         enableTags.setFont(new Font("Arial", Font.BOLD, 14));
+        selectedDetailLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         selectedLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         helpBtn.setPreferredSize(new Dimension(18, 18));
         helpBtn.setMargin(new Insets(0, 0, 0, 0));
@@ -265,6 +267,10 @@ public class EditorToolsPanel extends JPanel {
         enableTags.addActionListener(l);
     }
 
+    public void setTagEnabled(boolean enabled){
+        enableTags.setSelected(enabled);
+    }
+
     public boolean tagsEnabled() {
         return enableTags.isSelected();
     }
@@ -289,6 +295,11 @@ public class EditorToolsPanel extends JPanel {
     public Integer getHexValue() {
         String txt = hexField.getText().trim().replace(" ", "");
         return txt.isEmpty() ? null : Integer.parseUnsignedInt(txt, 16);
+    }
+
+    public void setSelectedDetail(String s) {
+        selectedDetailLabel.setText(s);
+        selectedDetailLabel.setVisible(s != null && !s.isEmpty());
     }
 
     public int getRepeatCount() {
@@ -360,6 +371,9 @@ public class EditorToolsPanel extends JPanel {
 
         c.gridy = row++; c.gridwidth = 2;
         add(selectedLabel, c);
+
+        c.gridy = row++; c.gridwidth = 2;
+        add(selectedDetailLabel, c);
 
         c.gridy = row++; c.gridwidth = 2; c.fill = GridBagConstraints.NONE;
         add(Box.createVerticalStrut(2), c); c.gridwidth = 1; c.fill = GridBagConstraints.HORIZONTAL;

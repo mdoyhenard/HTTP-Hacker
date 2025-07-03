@@ -11,7 +11,6 @@ public class ProxyBar extends JPanel {
     private final JTextArea descriptionArea;
     private final JTextField basePathField;
     private final JButton parsingButton;
-    private final JButton forwardingButton;
     private final JToggleButton showInStreamsToggle;
 
     public ProxyBar() {
@@ -36,6 +35,18 @@ public class ProxyBar extends JPanel {
 
         content.add(Box.createVerticalStrut(10));
 
+        // Base Path
+        JLabel basePathLabel = new JLabel("Base Path:");
+        basePathLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        content.add(basePathLabel);
+
+        basePathField = new JTextField();
+        basePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, basePathField.getPreferredSize().height));
+        basePathField.setAlignmentX(Component.CENTER_ALIGNMENT);
+        content.add(basePathField);
+
+        content.add(Box.createVerticalStrut(10));
+
         // Description
         JLabel descLabel = new JLabel("Description:");
         descLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -50,30 +61,12 @@ public class ProxyBar extends JPanel {
 
         content.add(Box.createVerticalStrut(10));
 
-        // Base Path
-        JLabel basePathLabel = new JLabel("Base Path:");
-        basePathLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        content.add(basePathLabel);
-
-        basePathField = new JTextField();
-        basePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, basePathField.getPreferredSize().height));
-        basePathField.setAlignmentX(Component.CENTER_ALIGNMENT);
-        content.add(basePathField);
-
-        content.add(Box.createVerticalStrut(10));
-
         // Buttons
         parsingButton = new JButton("HTTP Parser");
         parsingButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(parsingButton);
 
         content.add(Box.createVerticalStrut(5));
-
-        forwardingButton = new JButton("Edit forwarding code");
-        forwardingButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        content.add(forwardingButton);
-
-        content.add(Box.createVerticalStrut(10));
 
         // Toggle
         showInStreamsToggle = new JToggleButton("Show in streams");
@@ -125,10 +118,6 @@ public class ProxyBar extends JPanel {
 
     public void addParsingCodeListener(ActionListener l) {
         parsingButton.addActionListener(l);
-    }
-
-    public void addForwardingCodeListener(ActionListener l) {
-        forwardingButton.addActionListener(l);
     }
 
     public void addShowInStreamsListener(ActionListener l) {

@@ -1,5 +1,6 @@
 package extension;
 
+import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.ui.contextmenu.ContextMenuEvent;
 import burp.api.montoya.ui.contextmenu.ContextMenuItemsProvider;
@@ -44,13 +45,13 @@ public class HTTPRaiderContextMenu implements ContextMenuItemsProvider {
     private void sendRequestToNewSession(HttpRequest request) {
         appController.addSessionTab();
         appController.getLastController().getLastStreamController().setClientRequest(replaceVersion(request.toByteArray().getBytes()));
-        appController.getLastController().getLastStreamController().setHttpService(request.httpService());
+        appController.getLastController().getLastStreamController().setHttpService(request.httpService() != null ? request.httpService() : getServiceFromRequest(request));
     }
 
     private void sendRequestToSession(HttpRequest request, SessionController sessionController) {
         sessionController.addStreamTab();
         sessionController.getLastStreamController().setClientRequest(replaceVersion(request.toByteArray().getBytes()));
-        sessionController.getLastStreamController().setHttpService(request.httpService());
+        sessionController.getLastStreamController().setHttpService(request.httpService() != null ? request.httpService() : getServiceFromRequest(request));
         appController.setSelectedSession(sessionController);
     }
 
@@ -79,5 +80,11 @@ public class HTTPRaiderContextMenu implements ContextMenuItemsProvider {
         }
 
         return Arrays.copyOf(input, input.length);
+    }
+
+    private HttpService getServiceFromRequest(HttpRequest request){
+        String host = "localhost";
+        if (request.hasHeader("Host")) host = request.headerValue("Host");
+        return HttpService.httpService(host, 443, true);
     }
 }

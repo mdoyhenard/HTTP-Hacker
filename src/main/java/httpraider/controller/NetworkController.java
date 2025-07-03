@@ -2,7 +2,6 @@ package httpraider.controller;
 
 import burp.api.montoya.ui.editor.EditorOptions;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
-import burp.api.montoya.ui.editor.WebSocketMessageEditor;
 import extension.HTTPRaiderExtension;
 import httpraider.model.network.ConnectionModel;
 import httpraider.model.network.NetworkModel;
@@ -11,10 +10,7 @@ import httpraider.view.components.ComboItem;
 import httpraider.view.components.ConnectionLine;
 import httpraider.view.components.ProxyComponent;
 import httpraider.view.components.StreamComboBox;
-import httpraider.view.panels.HttpEditorPanel;
-import httpraider.view.panels.HttpParserPanel;
-import httpraider.view.panels.NetworkCanvas;
-import httpraider.view.panels.NetworkPanel;
+import httpraider.view.panels.*;
 import httpraider.view.menuBars.NetworkBar;
 import httpraider.view.menuBars.ProxyBar;
 
@@ -319,17 +315,6 @@ public class NetworkController {
             panel.setVisible(true);
         });
 
-        proxyBar.addForwardingCodeListener(e -> {
-            if (selectedProxyId == null) return;
-            ProxyController pc = proxyControllers.get(selectedProxyId);
-            HttpParserPanel panel = new HttpParserPanel();
-            this.parserController = new HttpParserController(
-                    pc.getModel().getForwardingSettings(),      // or getForwardingSettings()
-                    panel
-            );
-            panel.setVisible(true);
-        });
-
         proxyBar.addShowInStreamsListener(e -> {
             boolean on = ((JToggleButton)e.getSource()).isSelected();
             System.out.println("Show-in-streams for " + selectedProxyId + ": " + on);
@@ -498,9 +483,18 @@ public class NetworkController {
         HttpEditorPanel<HttpRequestEditor> reqEditor =
                 new HttpEditorPanel<>("Base Request",
                         HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
-        HttpEditorPanel<WebSocketMessageEditor> parsedReq =
-                new HttpEditorPanel<>("Parsed Request",
-                        HTTPRaiderExtension.API.userInterface().createWebSocketMessageEditor(EditorOptions.READ_ONLY));
+
+        HttpMultiEditorPanel parsedRequestPanel = new HttpMultiEditorPanel("Parsed Request", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY));
+        List<byte[]> requests1 = new ArrayList<>();
+        requests1.add("GET /one HTTP/1.1\r\nHost: algo.com\r\n\r\n".getBytes());
+        requests1.add("GET /two HTTP/1.1\r\nHost: algo.com\r\n\r\n".getBytes());
+        List<byte[]> requests2 = new ArrayList<>();
+        requests2.add("GET /three HTTP/1.1\r\nHost: algo.com\r\n\r\n".getBytes());
+        requests2.add("GET /four HTTP/1.1\r\nHost: algo.com\r\n\r\n".getBytes());
+        List<List<byte[]>> groups = new ArrayList<>();
+        groups.add(requests1);
+        groups.add(requests2);
+        parsedRequestPanel.addAll(groups);
         useForwardedRequest = false;
 
         StreamComboBox<byte[]> streamsBox = new StreamComboBox<>("Request from Stream");
@@ -514,8 +508,8 @@ public class NetworkController {
 
         reqEditor.setComponent(streamsBox, e->{ selectedReqId = streamsBox.getSelectedIndex(); reqEditor.setBytes(streamsBox.getSelectedValue()); });
 
-        if (proxiesToClient != null && !proxiesToClient.isEmpty()) parsedReq.setSwitch("Use transformations", e -> {useForwardedRequest = !useForwardedRequest;});
-        view.showHttpEditors(reqEditor, parsedReq);
+        if (proxiesToClient != null && !proxiesToClient.isEmpty()) parsedRequestPanel.getEditorPanel().setSwitch("Use transformations", e -> {useForwardedRequest = !useForwardedRequest;});
+        view.showHttpEditors(reqEditor, parsedRequestPanel);
     }
 
     private List<ProxyModel> getConnectionPathToClient(String proxyId) {

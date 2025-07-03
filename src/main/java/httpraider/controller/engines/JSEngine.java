@@ -1,8 +1,7 @@
 package httpraider.controller.engines;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Scriptable;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,30 +10,35 @@ public final class JSEngine {
     private JSEngine() {}
 
     private static void run(String script, Map<String, Object> inputs, Map<String, Object> outputs) {
-        try (Context ctx = Context.newBuilder("js").allowAllAccess(true).build()) {
-            Value bindings = ctx.getBindings("js");
+        Context ctx = Context.enter();
+        try {
+            Scriptable scope = ctx.initStandardObjects();
             for (Map.Entry<String, Object> e : inputs.entrySet()) {
-                bindings.putMember(e.getKey(), e.getValue());
+                Object jsObj = Context.javaToJS(e.getValue(), scope);
+                org.mozilla.javascript.ScriptableObject.putProperty(scope, e.getKey(), jsObj);
             }
-            ctx.eval("js", script);
+            ctx.evaluateString(scope, script, "script", 1, null);
             for (String key : outputs.keySet()) {
-                Value v = bindings.getMember(key);
-                if (v != null && !v.isNull()) {
-                    if (v.isBoolean()) {
-                        outputs.put(key, v.asBoolean());
-                    } else if (v.isNumber()) {
-                        outputs.put(key, v.as(Number.class));
-                    } else if (v.isString()) {
-                        outputs.put(key, v.asString());
-                    } else {
-                        outputs.put(key, v.toString());
-                    }
-                } else {
+                Object value = org.mozilla.javascript.ScriptableObject.getProperty(scope, key);
+                if (value == Scriptable.NOT_FOUND) {
                     outputs.put(key, null);
+                } else if (value instanceof Boolean) {
+                    outputs.put(key, (Boolean) value);
+                } else if (value instanceof Number) {
+                    outputs.put(key, (Number) value);
+                } else if (value instanceof String) {
+                    outputs.put(key, (String) value);
+                } else {
+                    outputs.put(key, value.toString());
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        } finally {
+            Context.exit();
+        }
     }
+
 
     public static String runTagEngine(String script, String input) {
         Map<String, Object> in = new HashMap<>();

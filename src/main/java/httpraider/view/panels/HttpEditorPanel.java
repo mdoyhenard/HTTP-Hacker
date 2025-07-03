@@ -1,6 +1,7 @@
 package httpraider.view.panels;
 
 import burp.api.montoya.core.ByteArray;
+import burp.api.montoya.http.HttpService;
 import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.ui.editor.Editor;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
@@ -31,7 +32,7 @@ public class HttpEditorPanel<T extends Editor> extends JPanel {
         component = null;
         name = new JLabel(text);
         name.setFont(name.getFont().deriveFont(Font.BOLD, 13f));
-        topPanel.setBorder(BorderFactory.createEmptyBorder(7, 12, 5, 0));
+        topPanel.setBorder(BorderFactory.createEmptyBorder(7, 12, 5, 8));
         topPanel.add(name, BorderLayout.WEST);
         add(topPanel, BorderLayout.NORTH);
         add(this.editor.uiComponent(), BorderLayout.CENTER);
@@ -47,6 +48,12 @@ public class HttpEditorPanel<T extends Editor> extends JPanel {
     public void removeComponent(){
         if (component != null) topPanel.remove((JComponent) component);
         component = null;
+    }
+
+    public void setService(HttpService service){
+        if (editor instanceof HttpRequestEditor){
+            ((HttpRequestEditor)editor).setRequest(((HttpRequestEditor) editor).getRequest().withService(service));
+        }
     }
 
     public void setStreamComboBox(StreamComboBox comboBox, ActionListener l){
@@ -92,6 +99,10 @@ public class HttpEditorPanel<T extends Editor> extends JPanel {
 
     public void setSearchExpression(String expression){
         editor.setSearchExpression(expression);
+    }
+
+    public boolean isSearchExpressionEmpty(){
+        return false; //TODO if getSearchExpression() gets available
     }
 
     public int getCaretPosition(){
@@ -143,5 +154,7 @@ public class HttpEditorPanel<T extends Editor> extends JPanel {
         editor.uiComponent().addFocusListener(listener);
     }
 
-
+    public Editor getEditorPanel(){
+        return editor;
+    }
 }
