@@ -18,6 +18,7 @@ public class ProxyModel implements Serializable {
     private String description;
     private String basePath;
     private boolean isClient;
+    private boolean showParser;
 
     private HttpParserModel parserSettings;
 
@@ -31,6 +32,7 @@ public class ProxyModel implements Serializable {
         this.basePath = basePath;
         this.isClient = false;
         this.parserSettings = new HttpParserModel();
+        this.showParser = false;
     }
 
     public ProxyModel(String domainName) {
@@ -40,6 +42,10 @@ public class ProxyModel implements Serializable {
     public String getId() {
         return id;
     }
+
+    public boolean isShowParser(){ return showParser; }
+
+    public void setShowParser(boolean showParser){ this.showParser = showParser; }
 
     public boolean isClient() {
         return isClient;

@@ -77,6 +77,13 @@ public class ProxyBar extends JPanel {
     }
 
     // getters & setters
+    public void setShowInStreamsEnabled(boolean enabled){
+        showInStreamsToggle.setSelected(enabled);
+    }
+
+    public boolean isShowInStreamsEnabled(){
+        return showInStreamsToggle.isSelected();
+    }
 
     public String getDomainName() {
         return domainNameField.getText();

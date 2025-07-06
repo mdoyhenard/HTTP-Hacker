@@ -44,7 +44,7 @@ public final class SessionController extends AbstractController<SessionModel, Se
         view.removeAllStreamTabs();
         for (StreamModel streamModel : model.getStreams()){
             StreamPanel streamPanel = new StreamPanel();
-            StreamController streamCtl = new StreamController(streamModel, streamPanel);
+            StreamController streamCtl = new StreamController(streamModel, streamPanel, networkController);
             streamControllers.add(streamCtl);
             view.addStreamTab(streamModel.getName(), streamPanel);
         }
@@ -76,7 +76,7 @@ public final class SessionController extends AbstractController<SessionModel, Se
 
     private void addStreamTab(StreamModel streamModel) {
         StreamPanel streamPanel = new StreamPanel();
-        StreamController streamCtl = new StreamController(streamModel, streamPanel);
+        StreamController streamCtl = new StreamController(streamModel, streamPanel, networkController);
         model.addStream(streamModel);
         streamControllers.add(streamCtl);
         view.addStreamTab(streamModel.getName(), streamPanel);

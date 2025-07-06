@@ -1,6 +1,8 @@
 package httpraider.view.panels;
 
 import extension.HTTPRaiderExtension;
+import httpraider.controller.ProxyController;
+import httpraider.model.network.ProxyModel;
 import httpraider.view.components.ActionButton;
 import httpraider.view.menuBars.ConnectionBar;
 import httpraider.view.menuBars.InspectorBar;
@@ -11,7 +13,13 @@ import burp.api.montoya.ui.editor.WebSocketMessageEditor;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import static javax.swing.SwingUtilities.invokeLater;
 
@@ -23,7 +31,7 @@ public class StreamPanel extends JPanel {
     private final HttpEditorPanel<HttpRequestEditor> clientRequest;
     private final HttpEditorPanel<HttpRequestEditor> requestQueue;
     private final HttpEditorPanel<WebSocketMessageEditor> responseQueue;
-    private final ArrayList<HttpEditorPanel<HttpRequestEditor>> proxyRequests;
+    private final ActionButton testButton;
 
     public StreamPanel() {
         super(new BorderLayout());
@@ -33,14 +41,91 @@ public class StreamPanel extends JPanel {
         inspectorBar = new InspectorBar();
         editorToolsGadget = new EditorToolsPanel();
         add(inspectorBar, BorderLayout.EAST);
-        proxyRequests = new ArrayList<>();
         clientRequest = new HttpEditorPanel<>("Client Request", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
         requestQueue = new HttpEditorPanel<>("Request Queue", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY));
         responseQueue = new HttpEditorPanel<>("Response Queue", HTTPRaiderExtension.API.userInterface().createWebSocketMessageEditor(EditorOptions.READ_ONLY));
+        testButton = new ActionButton("Test");
+        clientRequest.setComponent(testButton);
         setResponseHTTPsearch();
         setState(ConnectionBar.State.DISCONNECTED);
-        setBaseView();
         inspectorBar.expand();
+    }
+
+    public void setTestButtonActionListener(ActionListener l){
+        if (testButton.getActionListeners().length != 0) testButton.removeActionListener(testButton.getActionListeners()[0]);
+        testButton.addActionListener(l);
+    }
+
+    public void setBaseView() {
+        deleteMainComponent();
+        testButton.setVisible(false);
+        JSplitPane req = new JSplitPane(JSplitPane.VERTICAL_SPLIT, clientRequest, requestQueue);
+        req.setResizeWeight(0.5);
+        JSplitPane main = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, req, responseQueue);
+        add(main, BorderLayout.CENTER);
+        requestQueue.removeComponent();
+        ActionButton button = new ActionButton("-");
+        requestQueue.setComponent(button, e -> {
+            if (button.getText().equals("-")){
+                button.setText("+");
+                req.setDividerLocation(0.95);
+            }
+            else{
+                button.setText("-");
+                req.setDividerLocation(0.5);
+            }
+        });
+        main.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                main.setDividerLocation(0.6);
+            }
+        });
+    }
+
+    public void setProxyView(JSplitPane nestedRequests) {
+        requestQueue.removeComponent();
+        testButton.setVisible(true);
+        JSplitPane queues = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, requestQueue, responseQueue);
+        queues.setResizeWeight(0.5);
+
+        JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, nestedRequests, queues);
+        main.setResizeWeight(0.5);
+        add(main);
+    }
+
+    public void setProxyView(JTabbedPane nestedRequests) {
+        requestQueue.removeComponent();
+        testButton.setVisible(true);
+        JSplitPane queues = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, requestQueue, responseQueue);
+        queues.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                queues.setDividerLocation(0.5);
+            }
+        });
+
+        JSplitPane requests = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, clientRequest, nestedRequests);
+        requests.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                requests.setDividerLocation(0.5);
+            }
+        });
+
+        JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, requests, queues);
+        main.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                main.setDividerLocation(0.5);
+            }
+        });
+        add(main);
+    }
+
+
+    public HttpEditorPanel getClientRequesEditor(){
+        return clientRequest;
     }
 
     public EditorToolsPanel getEditorToolsPanel() {
@@ -99,79 +184,6 @@ public class StreamPanel extends JPanel {
         clientRequest.setBytes(request);
     }
 
-    public void setBaseView() {
-        invokeLater(() -> {
-            JSplitPane req = new JSplitPane(JSplitPane.VERTICAL_SPLIT, clientRequest, requestQueue);
-            req.setResizeWeight(0.5);
-            JSplitPane main = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, req, responseQueue);
-            add(main, BorderLayout.CENTER);
-            requestQueue.removeComponent();
-            ActionButton button = new ActionButton("-");
-            requestQueue.setComponent(button, e -> {
-                if (button.getText().equals("-")){
-                    button.setText("+");
-                    req.setDividerLocation(0.95);
-                }
-                else{
-                    button.setText("-");
-                    req.setDividerLocation(0.5);
-                }
-            });
-            main.setResizeWeight(0.6);
-            main.setDividerLocation(0.6);
-        });
-    }
-
-    public void setExpandedProxyView() {
-        invokeLater(() -> {
-            requestQueue.removeComponent();
-
-            JSplitPane queues = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, requestQueue, responseQueue);
-            queues.setResizeWeight(0.5);
-
-            JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, getNestedRequestPane(), queues);
-            main.setResizeWeight(0.5);
-            add(main);
-        });
-    }
-
-    public void setTabbedProxyView() {
-        invokeLater(() -> {
-            requestQueue.removeComponent();
-
-            JSplitPane queues = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, requestQueue, responseQueue);
-            queues.setResizeWeight(0.5);
-
-            JTabbedPane parsedRequests = new JTabbedPane();
-
-            JSplitPane requests = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, clientRequest, parsedRequests);
-            queues.setResizeWeight(0.5);
-
-            JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, requests, queues);
-            main.setResizeWeight(0.5);
-            add(main);
-        });
-    }
-
-    private JSplitPane getNestedRequestPane() {
-        JSplitPane root = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-        root.setResizeWeight(0.5);
-        root.setLeftComponent(clientRequest);
-        if (proxyRequests.isEmpty()) {
-            return root;
-        }
-        JSplitPane current = root;
-        for (int i = 0; i < proxyRequests.size() - 1; i++) {
-            JSplitPane next = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
-            next.setResizeWeight(0.5);
-            next.setLeftComponent(proxyRequests.get(i));
-            current.setRightComponent(next);
-            current = next;
-        }
-        current.setRightComponent(proxyRequests.get(proxyRequests.size() - 1));
-        return root;
-    }
-
     public void updateConnectionBar(String host, int port, boolean tls) {
         invokeLater(() -> {
             connectionBar.setState(ConnectionBar.State.DISCONNECTED);
@@ -199,6 +211,16 @@ public class StreamPanel extends JPanel {
 
     public InspectorBar getInspectorBar() {
         return inspectorBar;
+    }
+
+    private void deleteMainComponent(){
+        for (Component comp : getComponents()) {
+            Object constraint = ((BorderLayout) getLayout()).getConstraints(comp);
+            if (BorderLayout.CENTER.equals(constraint)) {
+                remove(comp);
+                break;
+            }
+        }
     }
 
 }

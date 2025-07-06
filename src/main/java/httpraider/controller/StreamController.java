@@ -1,22 +1,32 @@
 package httpraider.controller;
 
 import burp.api.montoya.http.HttpService;
+import burp.api.montoya.ui.editor.HttpRequestEditor;
+import extension.HTTPRaiderExtension;
 import extension.ToolsManager;
 import httpraider.controller.engines.TagEngine;
 import httpraider.model.ConnectionSettingsModel;
 import httpraider.model.StreamModel;
+import httpraider.model.network.ProxyModel;
+import httpraider.view.components.ActionButton;
 import httpraider.view.menuBars.ConnectionBar;
+import httpraider.view.panels.HttpEditorPanel;
+import httpraider.view.panels.HttpMultiEditorPanel;
 import httpraider.view.panels.StreamPanel;
 
 import javax.net.ssl.*;
 import javax.swing.*;
+import javax.swing.Timer;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.cert.X509Certificate;
-import java.util.Arrays;
+import java.util.*;
 import java.util.List;
+
+import static javax.swing.SwingUtilities.invokeLater;
 
 public final class StreamController extends AbstractController<StreamModel, StreamPanel> {
 
@@ -29,14 +39,70 @@ public final class StreamController extends AbstractController<StreamModel, Stre
     private final Object responseLock = new Object();
     private final ToolsManager toolsManager;
     private boolean tagsEnabled = false;
+    private NetworkController networkController;
+    private Map<ProxyModel, HttpMultiEditorPanel> proxyEditors;
 
-    public StreamController(StreamModel model, StreamPanel view) {
+    public StreamController(StreamModel model, StreamPanel view, NetworkController networkController) {
         super(model, view);
         state = ConnectionBar.State.DISCONNECTED;
         updateFromModel();
         toolsManager = new ToolsManager(view, this);
         view.getConnectionBar().setSendActionListener(this::sendAction);
         view.getConnectionBar().setDisconnectActionListener(this::disconnectAction);
+        this.networkController = networkController;
+        setTestActionListener();
+        resetView();
+    }
+
+    private void setTestActionListener(){
+        view.setTestButtonActionListener(e->{
+            for (ProxyModel proxyModel : proxyEditors.keySet()){
+                HttpParserController.setRequestGroupsEditor(proxyModel, view.getClientRequest(), networkController, proxyEditors.get(proxyModel));
+            }
+        });
+    }
+
+    public void resetView(){
+        updateProxyEditors();
+        if (proxyEditors.isEmpty()) view.setBaseView();
+        else {
+            view.setProxyView(getTabbedRequestPane());
+        }
+    }
+
+    private void updateProxyEditors(){
+        proxyEditors = new HashMap<>();
+        for (ProxyModel proxyModel : networkController.getModel().getProxies()){
+            if (proxyModel.isShowParser()) proxyEditors.put(proxyModel, new HttpMultiEditorPanel(proxyModel.getDomainName(), HTTPRaiderExtension.API.userInterface().createHttpRequestEditor()));
+        }
+    }
+
+    private JSplitPane getNestedRequestPane() {
+        JSplitPane root = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+        root.setResizeWeight(0.5);
+        root.setLeftComponent(view.getClientRequesEditor());
+        JSplitPane current = root;
+        int cnt = 0;
+        for (HttpMultiEditorPanel proxyPanel : proxyEditors.values()) {
+            cnt++;
+            if (cnt == networkController.getModel().getProxies().size()) current.setRightComponent(proxyPanel);
+            else {
+                JSplitPane next = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+                next.setResizeWeight(0.5);
+                next.setLeftComponent(proxyPanel);
+                current.setRightComponent(next);
+                current = next;
+            }
+        }
+        return root;
+    }
+
+    private JTabbedPane getTabbedRequestPane(){
+        JTabbedPane outPane = new JTabbedPane();
+        for (ProxyModel proxyModel : networkController.sortByDistanceToClient(proxyEditors.keySet())) {
+            outPane.add(proxyModel.getDomainName(), proxyEditors.get(proxyModel));
+        }
+        return outPane;
     }
 
     public void setName(String name) {

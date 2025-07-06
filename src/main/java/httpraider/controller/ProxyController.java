@@ -20,6 +20,10 @@ public class ProxyController {
         return model;
     }
 
+    public boolean isShowParserEnabled(){
+        return model.isShowParser();
+    }
+
     public ProxyComponent getView() {
         return view;
     }
@@ -66,5 +70,9 @@ public class ProxyController {
 
     public void setSelected(boolean selected) {
         view.setSelected(selected);
+    }
+    public void setEnabledProxy(boolean enabled){
+        model.setShowParser(enabled);
+        view.setEnabledProxy(enabled);
     }
 }

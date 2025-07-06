@@ -10,6 +10,7 @@ public class ProxyComponent extends JComponent {
     private final String id;
     private final boolean isClient;
     private boolean selected;
+    private boolean enabled;
     private static final Image clientImg;
     private static final Image proxyImg;
 
@@ -23,10 +24,11 @@ public class ProxyComponent extends JComponent {
         proxyImg  = (p != null && p.getIconWidth() > 0) ? p.getImage().getScaledInstance(NetworkController.ICON_WIDTH, NetworkController.ICON_HEIGHT, Image.SCALE_SMOOTH) : null;
     }
 
-    public ProxyComponent(String id, boolean isClient) {
+    public ProxyComponent(String id, boolean isClient, boolean enabled) {
         this.id = id;
         this.isClient = isClient;
         this.selected = false;
+        this.enabled = enabled;
         setOpaque(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
     }
@@ -47,8 +49,11 @@ public class ProxyComponent extends JComponent {
         }
     }
 
-    public boolean isSelected() {
-        return selected;
+    public void setEnabledProxy(boolean enabled) {
+        if (this.enabled != enabled) {
+            this.enabled = enabled;
+            repaint();
+        }
     }
 
     public Point getCenter() {
@@ -70,9 +75,16 @@ public class ProxyComponent extends JComponent {
             g.setColor(isClient ? new Color(60,130,200) : new Color(160,120,60));
             g.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 12, 12);
         }
+        if (enabled){
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setStroke(new BasicStroke(8));
+            g2.setColor(new Color(35, 152, 54, 189));
+            g2.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 14, 14);
+            g2.dispose();
+        }
         if (selected) {
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setStroke(new BasicStroke(4));
+            g2.setStroke(new BasicStroke(6));
             g2.setColor(new Color(36, 132, 255, 210));
             g2.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 14, 14);
             g2.dispose();

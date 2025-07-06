@@ -153,7 +153,7 @@ public final class EditorToolController implements ToolControllerInterface, Cust
     }
 
     private void onAddCustomTagButton(ActionEvent e) {
-        CustomTagModel def = new CustomTagModel("", "");
+        CustomTagModel def = new CustomTagModel("", "output = input;");
         tagManager.addTag(def);
     }
 

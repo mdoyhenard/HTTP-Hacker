@@ -1,5 +1,6 @@
 package httpraider.view.panels;
 
+import burp.api.montoya.http.message.requests.HttpRequest;
 import burp.api.montoya.ui.editor.Editor;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import httpraider.view.components.HttpRequestEditorHighlighter;
@@ -12,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
 
-public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
+public class HttpMultiEditorPanel extends JPanel {
     public static final int LIST_WIDTH = 70;
     public static final Color ALL_GROUP_COLOR = new Color(204, 227, 188, 216);
     public static final Color ALL_GROUP_COLOR_SEL = new Color(213, 236, 197, 94);
@@ -26,16 +27,15 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
     private final DefaultListModel<ListEntry> listModel;
     private final JScrollPane listScrollPane;
     private final Map<Integer, List<byte[]>> groups = new LinkedHashMap<>();
-    private final List<Integer> groupOrder = new ArrayList<>();
     private int reqCounter = 1;
     private int nextGroupId = 1;
     private HttpRequestEditorHighlighter highlighter;
 
-    public HttpMultiEditorPanel(String text, T editor) {
+    public HttpMultiEditorPanel(String text, HttpRequestEditor editor) {
         setLayout(new BorderLayout());
-
+        if (editor.getRequest() == null) editor.setRequest(HttpRequest.httpRequest(""));
         this.httpEditorPanel = new HttpEditorPanel(text, editor);
-        this.highlighter = new HttpRequestEditorHighlighter((HttpRequestEditor)editor);
+        this.highlighter = new HttpRequestEditorHighlighter(editor);
 
         listModel = new DefaultListModel<>();
         requestList = new JList<>(listModel);
@@ -106,8 +106,7 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
 
     private void showAllConcatenated() {
         List<byte[]> all = new ArrayList<>();
-        for (Integer groupId : groupOrder) {
-            List<byte[]> items = groups.get(groupId);
+        for (List<byte[]> items : groups.values()) {
             if (items != null && !items.isEmpty()) {
                 all.addAll(items);
             }
@@ -131,7 +130,10 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
         SwingUtilities.invokeLater(() -> {
             highlighter = new HttpRequestEditorHighlighter((HttpRequestEditor) httpEditorPanel.getEditorPanel());
             highlighter.clearHighlights();
-            Color[] highlightColors = {new Color(255,235,205), new Color(204,255,255), new Color(255,220,220), new Color(220,255,220)};
+            Color[] highlightColors = {new Color(255,235,205, 121),
+                    new Color(204,255,255, 124),
+                    new Color(255,220,220, 119),
+                    new Color(220,255,220, 124)};
             for (int i = 0; i < ranges.size(); i++) {
                 int[] r = ranges.get(i);
                 Color color = highlightColors[i % highlightColors.length];
@@ -143,7 +145,6 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
     public int addGroup() {
         int groupId = nextGroupId++;
         groups.put(groupId, new ArrayList<>());
-        groupOrder.add(groupId);
         refreshList();
         return groupId;
     }
@@ -151,19 +152,16 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
     public int addGroup(List<byte[]> items) {
         int groupId = nextGroupId++;
         groups.put(groupId, new ArrayList<>(items));
-        groupOrder.add(groupId);
         refreshList();
         return groupId;
     }
 
     public void addAll(List<List<byte[]>> newGroups) {
         groups.clear();
-        groupOrder.clear();
         nextGroupId = 1;
         for (List<byte[]> groupItems : newGroups) {
             int groupId = nextGroupId++;
             groups.put(groupId, new ArrayList<>(groupItems));
-            groupOrder.add(groupId);
         }
         refreshList();
     }
@@ -171,13 +169,8 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
     public void removeGroup(int groupId) {
         if (groups.containsKey(groupId)) {
             groups.remove(groupId);
-            groupOrder.remove((Integer) groupId);
             refreshList();
         }
-    }
-
-    public List<Integer> getGroups() {
-        return Collections.unmodifiableList(new ArrayList<>(groupOrder));
     }
 
     public void addItemToGroup(int groupId, byte[] bytes) {
@@ -190,7 +183,6 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
 
     public void clear() {
         groups.clear();
-        groupOrder.clear();
         nextGroupId = 1;
         reqCounter = 1;
         refreshList();
@@ -209,8 +201,7 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
     }
 
     private byte[] getSingleByteArray() {
-        for (Integer groupId : groupOrder) {
-            List<byte[]> l = groups.get(groupId);
+        for (List<byte[]> l : groups.values()) {
             if (l != null && !l.isEmpty()) {
                 return l.get(0);
             }
@@ -236,7 +227,7 @@ public class HttpMultiEditorPanel<T extends Editor> extends JPanel {
             // Add small divider row after "All"
             listModel.addElement(new ListEntry(ListEntryType.DIVIDER, null, -1, 0));
 
-            for (Integer groupId : groupOrder) {
+            for (int groupId : groups.keySet()) {
                 List<byte[]> items = groups.get(groupId);
                 if (items != null && !items.isEmpty()) {
                     listModel.addElement(new ListEntry(ListEntryType.GROUP_HEADER, null, groupId, 0));

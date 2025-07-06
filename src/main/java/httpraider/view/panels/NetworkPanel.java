@@ -5,6 +5,8 @@ import httpraider.view.menuBars.ProxyBar;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 
 public class NetworkPanel extends JPanel {
 
@@ -58,12 +60,25 @@ public class NetworkPanel extends JPanel {
         repaint();
     }
 
-    public void showHttpEditors(HttpEditorPanel<?> left, HttpMultiEditorPanel<?> right) {
+    public void showHttpEditors(HttpEditorPanel<?> left, HttpMultiEditorPanel right) {
         JSplitPane httpEditorSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, left, right);
-        httpEditorSplit.setResizeWeight(0.5);
+        httpEditorSplit.setDividerLocation(500);
+        httpEditorSplit.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                httpEditorSplit.setDividerLocation(0.5);
+
+            }
+        });
 
         JSplitPane vertical = new JSplitPane(JSplitPane.VERTICAL_SPLIT, centerPanel, httpEditorSplit);
-        vertical.setResizeWeight(0.6);
+        vertical.setDividerLocation(300);
+        vertical.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                vertical.setDividerLocation(0.5);
+            }
+        });
 
         remove(currentCenter);
         currentCenter = vertical;
@@ -77,7 +92,6 @@ public class NetworkPanel extends JPanel {
         remove(currentCenter);
         currentCenter = centerPanel;
         add(currentCenter, BorderLayout.CENTER);
-
         revalidate();
         repaint();
     }

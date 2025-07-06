@@ -45,6 +45,12 @@ public class HttpEditorPanel<T extends Editor> extends JPanel {
         topPanel.add((JComponent)component, BorderLayout.EAST);
     }
 
+    public void setComponent(ActionComponent component){
+        if (this.component != null) topPanel.remove((JComponent)this.component);
+        this.component =  component;
+        topPanel.add((JComponent)component, BorderLayout.EAST);
+    }
+
     public void removeComponent(){
         if (component != null) topPanel.remove((JComponent) component);
         component = null;
@@ -62,6 +68,10 @@ public class HttpEditorPanel<T extends Editor> extends JPanel {
 
     public void setSwitch(String text, ActionListener l){
         setComponent(new SwitchButton(text), l);
+    }
+
+    public String getName() {
+        return name.getText();
     }
 
     public void setName(String text){ name.setText(text); }

@@ -4,7 +4,9 @@ package httpraider.model.network;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class HttpParserModel implements Serializable {
 
@@ -15,9 +17,13 @@ public class HttpParserModel implements Serializable {
     private List<String> headerSplitSequences;
     private List<BodyLenHeader> bodyLenHeaders;
     private List<String> chunkEndSequences;
-    private String codeStep1;
-    private String codeStep2;
-    private String codeStep3;
+    private String headerEndCode;
+    private String headerSplitCode;
+    private String bodyLenCode;
+
+    private final String insertHeaderJS = "\n\nfunction insertHeader(headers, name, value) { var arr = Array.prototype.slice.call(headers, 0); arr.push(name + ': ' + value); return arr; }\n\n//outHeaderLines = insertHeader(outHeaderLines, \"Content-Length\", \"100\");\n\n//outHeaderLines = parseHeaderBlock(headerBlock);"
+
+            ;
 
     public HttpParserModel() {
         this.headerEndSequences = new ArrayList<>();
@@ -29,15 +35,15 @@ public class HttpParserModel implements Serializable {
         this.headerSplitSequences.add("\\n\\n");
 
         this.bodyLenHeaders = new ArrayList<>();
-        this.bodyLenHeaders.add(new BodyLenHeader("Transfer-Encoding:", true));
+        this.bodyLenHeaders.add(new BodyLenHeader("Transfer-Encoding: chunked", true));
+        this.bodyLenHeaders.add(new BodyLenHeader("Content-Length: ",false));
 
         this.chunkEndSequences = new ArrayList<>();
         this.chunkEndSequences.add("\\r\\n");
 
-
-        this.codeStep1 = "";
-        this.codeStep2 = "";
-        this.codeStep3 = "";
+        this.headerEndCode = "outHeaders = headers;\noutBuffer = buffer;";
+        this.headerSplitCode = "outHeaderLines = [];\nfor (var i = 0; i < headerLines.length; i++) {\noutHeaderLines.push(headerLines[i]);\n}" + insertHeaderJS;
+        this.bodyLenCode = "outBody = body;\noutBuffer = buffer;\n//outBody = parseBodyLength(headerLines, buffer, body);";
     }
 
     public List<String> getHeaderEndSequences() {
@@ -64,28 +70,28 @@ public class HttpParserModel implements Serializable {
         this.bodyLenHeaders = bodyLenHeaders;
     }
 
-    public String getCodeStep1() {
-        return codeStep1;
+    public String getHeaderEndCode() {
+        return headerEndCode;
     }
 
-    public void setCodeStep1(String codeStep1) {
-        this.codeStep1 = codeStep1;
+    public void setHeaderEndCode(String headerEndCode) {
+        this.headerEndCode = headerEndCode;
     }
 
-    public String getCodeStep2() {
-        return codeStep2;
+    public String getHeaderSplitCode() {
+        return headerSplitCode;
     }
 
-    public void setCodeStep2(String codeStep2) {
-        this.codeStep2 = codeStep2;
+    public void setHeaderSplitCode(String headerSplitCode) {
+        this.headerSplitCode = headerSplitCode;
     }
 
-    public String getCodeStep3() {
-        return codeStep3;
+    public String getBodyLenCode() {
+        return bodyLenCode;
     }
 
-    public void setCodeStep3(String codeStep3) {
-        this.codeStep3 = codeStep3;
+    public void setBodyLenCode(String bodyLenCode) {
+        this.bodyLenCode = bodyLenCode;
     }
 
     public List<String> getChunkEndSequences() {
