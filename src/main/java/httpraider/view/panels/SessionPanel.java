@@ -2,7 +2,8 @@ package httpraider.view.panels;
 
 import extension.HTTPRaiderExtension;
 import httpraider.view.components.CustomTabbedPane;
-import httpraider.view.components.SessionTabbedPaneUI;
+import httpraider.view.components.helpers.SessionTabbedPaneUI;
+import httpraider.view.panels.network.NetworkPanel;
 
 import javax.swing.*;
 import javax.swing.border.MatteBorder;
@@ -19,7 +20,7 @@ public class SessionPanel extends JPanel {
     private final CustomTabbedPane streams;
     private final NetworkHeader    netHdr   = new NetworkHeader();
     private final JPanel           content  = new JPanel(new BorderLayout());
-    private final NetworkPanel     networkView;
+    private final NetworkPanel networkView;
 
     private Component currentStreamComp  = null;
     private int       currentStreamIndex = -1;

@@ -1,7 +1,7 @@
-package httpraider.view.panels;
+package httpraider.view.panels.network;
 
-import httpraider.view.components.ConnectionLine;
-import httpraider.view.components.ProxyComponent;
+import httpraider.view.components.network.ConnectionLine;
+import httpraider.view.components.network.ProxyComponent;
 
 import javax.swing.*;
 import java.awt.*;

@@ -1,10 +1,8 @@
-package httpraider.view.components;
+package httpraider.view.components.helpers;
 
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.text.*;
 import java.awt.*;
 

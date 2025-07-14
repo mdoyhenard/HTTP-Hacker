@@ -1,7 +1,9 @@
-package httpraider.view.panels;
+package httpraider.view.panels.network;
 
 import httpraider.view.menuBars.NetworkBar;
 import httpraider.view.menuBars.ProxyBar;
+import httpraider.view.panels.HttpEditorPanel;
+import httpraider.view.panels.HttpMultiEditorPanel;
 
 import javax.swing.*;
 import java.awt.*;

@@ -1,104 +1,216 @@
-// file: httpraider/model/network/HTTPParserSettings.java
 package httpraider.model.network;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class HttpParserModel implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private List<String> headerEndSequences;
-    private List<String> headerSplitSequences;
-    private List<BodyLenHeader> bodyLenHeaders;
-    private List<String> chunkEndSequences;
-    private String headerEndCode;
-    private String headerSplitCode;
-    private String bodyLenCode;
+    // --- Header line ending patterns ---
+    private List<String> headerLineEndings;
 
-    private final String insertHeaderJS = "\n\nfunction insertHeader(headers, name, value) { var arr = Array.prototype.slice.call(headers, 0); arr.push(name + ': ' + value); return arr; }\n\n//outHeaderLines = insertHeader(outHeaderLines, \"Content-Length\", \"100\");\n\n//outHeaderLines = parseHeaderBlock(headerBlock);"
+    // --- Header folding ---
+    private boolean allowHeaderFolding;
 
-            ;
+    // --- Header delete and add rules ---
+    private List<String> deleteHeaderRules;
+    private List<String> addHeaderRules;
+
+    // --- Message-length headers ---
+    private List<BodyLenHeaderRule> bodyLenHeaderRules;
+
+    // --- Chunked line ending patterns ---
+    private List<String> chunkedLineEndings;
+
+    // --- Request line configuration ---
+    private List<String> requestLineDelimiters;
+    private boolean rewriteMethodEnabled;
+    private String fromMethod;
+    private String toMethod;
+    private boolean decodeUrlBeforeForwarding;
+    private String urlDecodeFrom;
+    private String urlDecodeTo;
+    private ForcedHttpVersion forcedHttpVersion;
+    private String customHttpVersion;
+
+    // --- JS code for each step ---
+    private boolean useHeaderLinesJs;
+    private String headerLinesScript;
+
+    private boolean useRequestLineJs;
+    private String requestLineScript;
+
+    private boolean useMessageLengthJs;
+    private String messageLengthScript;
+
+    // --- Message-Length Body Encoding Option ---
+    private MessageLenBodyEncoding outputBodyEncoding;
+
+    // --- Load balancing rules ---
+    private List<LoadBalancingRule> loadBalancingRules = new ArrayList<>();
 
     public HttpParserModel() {
-        this.headerEndSequences = new ArrayList<>();
-        this.headerEndSequences.add("\\r\\n\\r\\n");
-        this.headerEndSequences.add("\\n\\n");
+        headerLineEndings = new ArrayList<>();
+        headerLineEndings.add("\\r\\n");
 
-        this.headerSplitSequences = new ArrayList<>();
-        this.headerSplitSequences.add("\\r\\n");
-        this.headerSplitSequences.add("\\n\\n");
+        allowHeaderFolding = false;
 
-        this.bodyLenHeaders = new ArrayList<>();
-        this.bodyLenHeaders.add(new BodyLenHeader("Transfer-Encoding: chunked", true));
-        this.bodyLenHeaders.add(new BodyLenHeader("Content-Length: ",false));
+        deleteHeaderRules = new ArrayList<>();
+        addHeaderRules = new ArrayList<>();
 
-        this.chunkEndSequences = new ArrayList<>();
-        this.chunkEndSequences.add("\\r\\n");
+        bodyLenHeaderRules = new ArrayList<>();
+        bodyLenHeaderRules.add(new BodyLenHeaderRule("Transfer-Encoding: chunked", true, DuplicateHandling.LAST));
+        bodyLenHeaderRules.add(new BodyLenHeaderRule("Content-Length: ", false, DuplicateHandling.FIRST));
 
-        this.headerEndCode = "outHeaders = headers;\noutBuffer = buffer;";
-        this.headerSplitCode = "outHeaderLines = [];\nfor (var i = 0; i < headerLines.length; i++) {\noutHeaderLines.push(headerLines[i]);\n}" + insertHeaderJS;
-        this.bodyLenCode = "outBody = body;\noutBuffer = buffer;\n//outBody = parseBodyLength(headerLines, buffer, body);";
+        chunkedLineEndings = new ArrayList<>();
+        chunkedLineEndings.add("\\r\\n");
+
+        requestLineDelimiters = new ArrayList<>();
+        requestLineDelimiters.add(" ");
+
+        rewriteMethodEnabled = false;
+        fromMethod = "";
+        toMethod = "";
+
+        decodeUrlBeforeForwarding = false;
+        urlDecodeFrom = "%21";
+        urlDecodeTo = "%7f";
+
+        forcedHttpVersion = ForcedHttpVersion.AUTO;
+        customHttpVersion = "";
+
+        useHeaderLinesJs = false;
+        headerLinesScript = "";
+
+        useRequestLineJs = false;
+        requestLineScript = "";
+
+        useMessageLengthJs = false;
+        messageLengthScript = "";
+
+        outputBodyEncoding = MessageLenBodyEncoding.DONT_MODIFY;
+
+        loadBalancingRules = new ArrayList<>();
     }
 
-    public List<String> getHeaderEndSequences() {
-        return headerEndSequences;
+    // --- Getters & Setters ---
+
+    public List<String> getHeaderLineEndings() { return headerLineEndings; }
+    public void setHeaderLineEndings(List<String> headerLineEndings) { this.headerLineEndings = headerLineEndings; }
+
+    public boolean isAllowHeaderFolding() { return allowHeaderFolding; }
+    public void setAllowHeaderFolding(boolean allowHeaderFolding) { this.allowHeaderFolding = allowHeaderFolding; }
+
+    public List<String> getDeleteHeaderRules() { return deleteHeaderRules; }
+    public void setDeleteHeaderRules(List<String> deleteHeaderRules) {
+        this.deleteHeaderRules = deleteHeaderRules != null ? new ArrayList<>(deleteHeaderRules) : new ArrayList<>();
     }
 
-    public void setHeaderEndSequences(List<String> headerEndSequences) {
-        this.headerEndSequences = headerEndSequences;
+    public List<String> getAddHeaderRules() { return addHeaderRules; }
+    public void setAddHeaderRules(List<String> addHeaderRules) {
+        this.addHeaderRules = addHeaderRules != null ? new ArrayList<>(addHeaderRules) : new ArrayList<>();
     }
 
-    public List<String> getHeaderSplitSequences() {
-        return headerSplitSequences;
+    public List<BodyLenHeaderRule> getBodyLenHeaderRules() { return bodyLenHeaderRules; }
+    public void setBodyLenHeaderRules(List<BodyLenHeaderRule> bodyLenHeaderRules) { this.bodyLenHeaderRules = bodyLenHeaderRules; }
+
+    public List<String> getChunkedLineEndings() { return chunkedLineEndings; }
+    public void setChunkedLineEndings(List<String> chunkedLineEndings) { this.chunkedLineEndings = chunkedLineEndings; }
+
+    public List<String> getRequestLineDelimiters() { return requestLineDelimiters; }
+    public void setRequestLineDelimiters(List<String> requestLineDelimiters) { this.requestLineDelimiters = requestLineDelimiters; }
+
+    public boolean isRewriteMethodEnabled() { return rewriteMethodEnabled; }
+    public void setRewriteMethodEnabled(boolean rewriteMethodEnabled) { this.rewriteMethodEnabled = rewriteMethodEnabled; }
+
+    public String getFromMethod() { return fromMethod; }
+    public void setFromMethod(String fromMethod) { this.fromMethod = fromMethod; }
+
+    public String getToMethod() { return toMethod; }
+    public void setToMethod(String toMethod) { this.toMethod = toMethod; }
+
+    public boolean isDecodeUrlBeforeForwarding() { return decodeUrlBeforeForwarding; }
+    public void setDecodeUrlBeforeForwarding(boolean decodeUrlBeforeForwarding) { this.decodeUrlBeforeForwarding = decodeUrlBeforeForwarding; }
+
+    public String getUrlDecodeFrom() { return urlDecodeFrom; }
+    public void setUrlDecodeFrom(String urlDecodeFrom) { this.urlDecodeFrom = urlDecodeFrom; }
+
+    public String getUrlDecodeTo() { return urlDecodeTo; }
+    public void setUrlDecodeTo(String urlDecodeTo) { this.urlDecodeTo = urlDecodeTo; }
+
+    public ForcedHttpVersion getForcedHttpVersion() { return forcedHttpVersion; }
+    public void setForcedHttpVersion(ForcedHttpVersion forcedHttpVersion) { this.forcedHttpVersion = forcedHttpVersion; }
+
+    public String getCustomHttpVersion() { return customHttpVersion; }
+    public void setCustomHttpVersion(String customHttpVersion) { this.customHttpVersion = customHttpVersion; }
+
+    public boolean isUseHeaderLinesJs() { return useHeaderLinesJs; }
+    public void setUseHeaderLinesJs(boolean useHeaderLinesJs) { this.useHeaderLinesJs = useHeaderLinesJs; }
+
+    public String getHeaderLinesScript() { return headerLinesScript; }
+    public void setHeaderLinesScript(String headerLinesScript) { this.headerLinesScript = headerLinesScript; }
+
+    public boolean isUseRequestLineJs() { return useRequestLineJs; }
+    public void setUseRequestLineJs(boolean useRequestLineJs) { this.useRequestLineJs = useRequestLineJs; }
+
+    public String getRequestLineScript() { return requestLineScript; }
+    public void setRequestLineScript(String requestLineScript) { this.requestLineScript = requestLineScript; }
+
+    public boolean isUseMessageLengthJs() { return useMessageLengthJs; }
+    public void setUseMessageLengthJs(boolean useMessageLengthJs) { this.useMessageLengthJs = useMessageLengthJs; }
+
+    public String getMessageLengthScript() { return messageLengthScript; }
+    public void setMessageLengthScript(String messageLengthScript) { this.messageLengthScript = messageLengthScript; }
+
+    public MessageLenBodyEncoding getOutputBodyEncoding() { return outputBodyEncoding; }
+    public void setOutputBodyEncoding(MessageLenBodyEncoding outputBodyEncoding) { this.outputBodyEncoding = outputBodyEncoding; }
+
+    public List<LoadBalancingRule> getLoadBalancingRules() { return loadBalancingRules; }
+    public void setLoadBalancingRules(List<LoadBalancingRule> rules) {
+        this.loadBalancingRules = rules != null ? new ArrayList<>(rules) : new ArrayList<>();
     }
 
-    public void setHeaderSplitSequences(List<String> headerSplitSequences) {
-        this.headerSplitSequences = headerSplitSequences;
+    // --- Nested types ---
+
+    public enum DuplicateHandling {
+        FIRST, LAST, ERROR
     }
 
-    public List<BodyLenHeader> getBodyLenHeaders() {
-        return bodyLenHeaders;
+    public enum ForcedHttpVersion {
+        AUTO, HTTP_1_0, HTTP_1_1
     }
 
-    public void setBodyLenHeaders(List<BodyLenHeader> bodyLenHeaders) {
-        this.bodyLenHeaders = bodyLenHeaders;
+    public enum MessageLenBodyEncoding {
+        FORCE_CHUNKED, FORCE_CL_HEADER, DONT_MODIFY
     }
 
-    public String getHeaderEndCode() {
-        return headerEndCode;
+    public static class BodyLenHeaderRule implements Serializable {
+        private String pattern;
+        private boolean isChunked;
+        private DuplicateHandling duplicateHandling;
+
+        public BodyLenHeaderRule(String pattern, boolean isChunked, DuplicateHandling duplicateHandling) {
+            this.pattern = pattern;
+            this.isChunked = isChunked;
+            this.duplicateHandling = duplicateHandling;
+        }
+
+        public BodyLenHeaderRule() {
+            this("", false, DuplicateHandling.FIRST);
+        }
+
+        public String getPattern() { return pattern; }
+        public void setPattern(String pattern) { this.pattern = pattern; }
+
+        public boolean isChunked() { return isChunked; }
+        public void setChunked(boolean chunked) { isChunked = chunked; }
+
+        public DuplicateHandling getDuplicateHandling() { return duplicateHandling; }
+        public void setDuplicateHandling(DuplicateHandling duplicateHandling) { this.duplicateHandling = duplicateHandling; }
     }
 
-    public void setHeaderEndCode(String headerEndCode) {
-        this.headerEndCode = headerEndCode;
-    }
-
-    public String getHeaderSplitCode() {
-        return headerSplitCode;
-    }
-
-    public void setHeaderSplitCode(String headerSplitCode) {
-        this.headerSplitCode = headerSplitCode;
-    }
-
-    public String getBodyLenCode() {
-        return bodyLenCode;
-    }
-
-    public void setBodyLenCode(String bodyLenCode) {
-        this.bodyLenCode = bodyLenCode;
-    }
-
-    public List<String> getChunkEndSequences() {
-        return chunkEndSequences;
-    }
-
-    public void setChunkEndSequences(List<String> chunkEndSequences) {
-        this.chunkEndSequences = chunkEndSequences;
-    }
 }

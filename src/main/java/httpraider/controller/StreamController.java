@@ -55,12 +55,19 @@ public final class StreamController extends AbstractController<StreamModel, Stre
     }
 
     private void setTestActionListener(){
-        view.setTestButtonActionListener(e->{
+        view.setTestButtonActionListener(e -> {
+            byte[] req = view.getClientRequest();
             for (ProxyModel proxyModel : proxyEditors.keySet()){
-                HttpParserController.setRequestGroupsEditor(proxyModel, view.getClientRequest(), networkController, proxyEditors.get(proxyModel));
+                List<List<byte[]>> groups = httpraider.parser.ParserChainRunner.parseFinalGroupsForPanel(
+                        proxyModel,
+                        req,
+                        networkController
+                );
+                proxyEditors.get(proxyModel).addAll(groups);
             }
         });
     }
+
 
     public void resetView(){
         updateProxyEditors();

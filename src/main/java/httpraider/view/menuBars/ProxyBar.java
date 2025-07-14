@@ -9,7 +9,6 @@ import java.awt.event.ActionListener;
 public class ProxyBar extends JPanel {
     private final JTextField domainNameField;
     private final JTextArea descriptionArea;
-    private final JTextField basePathField;
     private final JButton parsingButton;
     private final JToggleButton showInStreamsToggle;
 
@@ -32,18 +31,6 @@ public class ProxyBar extends JPanel {
         domainNameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, domainNameField.getPreferredSize().height));
         domainNameField.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(domainNameField);
-
-        content.add(Box.createVerticalStrut(10));
-
-        // Base Path
-        JLabel basePathLabel = new JLabel("Base Path:");
-        basePathLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        content.add(basePathLabel);
-
-        basePathField = new JTextField();
-        basePathField.setMaximumSize(new Dimension(Integer.MAX_VALUE, basePathField.getPreferredSize().height));
-        basePathField.setAlignmentX(Component.CENTER_ALIGNMENT);
-        content.add(basePathField);
 
         content.add(Box.createVerticalStrut(10));
 
@@ -101,14 +88,6 @@ public class ProxyBar extends JPanel {
         descriptionArea.setText(desc);
     }
 
-    public String getBasePath() {
-        return basePathField.getText();
-    }
-
-    public void setBasePath(String path) {
-        basePathField.setText(path);
-    }
-
     // listener registration
 
     public void addDomainNameListener(DocumentListener l) {
@@ -117,10 +96,6 @@ public class ProxyBar extends JPanel {
 
     public void addDescriptionListener(DocumentListener l) {
         descriptionArea.getDocument().addDocumentListener(l);
-    }
-
-    public void addBasePathListener(DocumentListener l) {
-        basePathField.getDocument().addDocumentListener(l);
     }
 
     public void addParsingCodeListener(ActionListener l) {

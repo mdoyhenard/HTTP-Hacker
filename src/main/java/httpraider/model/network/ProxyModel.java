@@ -1,9 +1,7 @@
-// file: httpraider/model/network/ProxyModel.java
 package httpraider.model.network;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.Map;
 import java.util.UUID;
 
 public class ProxyModel implements Serializable {
@@ -16,7 +14,6 @@ public class ProxyModel implements Serializable {
     private final String id;
     private String domainName;
     private String description;
-    private String basePath;
     private boolean isClient;
     private boolean showParser;
 
@@ -29,7 +26,6 @@ public class ProxyModel implements Serializable {
         this.id = id == null ? UUID.randomUUID().toString() : id;
         this.domainName = domainName;
         this.description = description;
-        this.basePath = basePath;
         this.isClient = false;
         this.parserSettings = new HttpParserModel();
         this.showParser = false;
@@ -43,9 +39,9 @@ public class ProxyModel implements Serializable {
         return id;
     }
 
-    public boolean isShowParser(){ return showParser; }
+    public boolean isShowParser() { return showParser; }
 
-    public void setShowParser(boolean showParser){ this.showParser = showParser; }
+    public void setShowParser(boolean showParser) { this.showParser = showParser; }
 
     public boolean isClient() {
         return isClient;
@@ -71,14 +67,6 @@ public class ProxyModel implements Serializable {
         this.description = description;
     }
 
-    public String getBasePath() {
-        return basePath;
-    }
-
-    public void setBasePath(String basePath) {
-        this.basePath = basePath;
-    }
-
     public HttpParserModel getParserSettings() {
         return parserSettings;
     }
@@ -86,6 +74,4 @@ public class ProxyModel implements Serializable {
     public void setParserSettings(HttpParserModel parserSettings) {
         this.parserSettings = parserSettings;
     }
-
-
 }

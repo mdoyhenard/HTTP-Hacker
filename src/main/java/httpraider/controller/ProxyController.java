@@ -1,7 +1,7 @@
 package httpraider.controller;
 
 import httpraider.model.network.ProxyModel;
-import httpraider.view.components.ProxyComponent;
+import httpraider.view.components.network.ProxyComponent;
 
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -36,20 +36,12 @@ public class ProxyController {
         model.setDescription(description);
     }
 
-    public void setBasePath(String basePath) {
-        model.setBasePath(basePath);
-    }
-
     public String getDomainName() {
         return model.getDomainName();
     }
 
     public String getDescription() {
         return model.getDescription();
-    }
-
-    public String getBasePath() {
-        return model.getBasePath();
     }
 
     public boolean isClient() {

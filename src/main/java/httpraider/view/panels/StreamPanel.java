@@ -1,8 +1,6 @@
 package httpraider.view.panels;
 
 import extension.HTTPRaiderExtension;
-import httpraider.controller.ProxyController;
-import httpraider.model.network.ProxyModel;
 import httpraider.view.components.ActionButton;
 import httpraider.view.menuBars.ConnectionBar;
 import httpraider.view.menuBars.InspectorBar;
@@ -13,13 +11,9 @@ import burp.api.montoya.ui.editor.WebSocketMessageEditor;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 import static javax.swing.SwingUtilities.invokeLater;
 

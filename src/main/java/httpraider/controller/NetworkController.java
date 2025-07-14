@@ -6,10 +6,16 @@ import extension.HTTPRaiderExtension;
 import httpraider.model.network.ConnectionModel;
 import httpraider.model.network.NetworkModel;
 import httpraider.model.network.ProxyModel;
+import httpraider.parser.ParserChainRunner;
 import httpraider.view.components.*;
+import httpraider.view.components.network.ConnectionLine;
+import httpraider.view.components.network.ProxyComponent;
 import httpraider.view.panels.*;
 import httpraider.view.menuBars.NetworkBar;
 import httpraider.view.menuBars.ProxyBar;
+import httpraider.view.panels.network.NetworkCanvas;
+import httpraider.view.panels.network.NetworkPanel;
+import httpraider.view.panels.HttpParserPanel;
 
 import javax.swing.*;
 import javax.swing.Timer;
@@ -39,9 +45,10 @@ public class NetworkController {
     private ProxyComponent connectStartProxy;
     private boolean isConnecting;
     private String selectedProxyId;
-    private boolean useForwardedRequest;
     private int selectedReqId = 0;
     private HttpParserController parserController;
+    private final HttpEditorPanel<HttpRequestEditor> reqEditor;
+
 
     public static final int ICON_WIDTH = 47;
     public static final int ICON_HEIGHT = 65;
@@ -64,6 +71,9 @@ public class NetworkController {
         this.connectStartProxy = null;
         this.isConnecting = false;
         this.selectedProxyId = null;
+        this.reqEditor = new HttpEditorPanel<>("Client Request",
+                HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
+
 
         for (ProxyModel proxy : model.getProxies()) {
             ProxyComponent proxyComponent = new ProxyComponent(proxy.getId(), proxy.isClient(), proxy.isShowParser());
@@ -291,24 +301,14 @@ public class NetworkController {
             public void changedUpdate(DocumentEvent e) { update(); }
         });
 
-        proxyBar.addBasePathListener(new DocumentListener() {
-            private void update() {
-                if (selectedProxyId != null) {
-                    proxyControllers.get(selectedProxyId).setBasePath(proxyBar.getBasePath());
-                }
-            }
-            public void insertUpdate(DocumentEvent e) { update(); }
-            public void removeUpdate(DocumentEvent e) { update(); }
-            public void changedUpdate(DocumentEvent e) { update(); }
-        });
-
         proxyBar.addParsingCodeListener(e -> {
             if (selectedProxyId == null) return;
             ProxyController pc = proxyControllers.get(selectedProxyId);
             HttpParserPanel panel = new HttpParserPanel();
             this.parserController = new HttpParserController(
-                    pc.getModel().getParserSettings(),      // or getForwardingSettings()
-                    panel
+                    pc.getModel(),
+                    panel,
+                    this
             );
             panel.setVisible(true);
         });
@@ -493,42 +493,61 @@ public class NetworkController {
         if (curr != null) {
             proxyBar.setDomainName(curr.getDomainName());
             proxyBar.setDescription(curr.getDescription());
-            proxyBar.setBasePath(curr.getBasePath());
             proxyBar.setShowInStreamsEnabled(curr.isShowParserEnabled());
         } else {
             proxyBar.setDomainName("");
             proxyBar.setDescription("");
-            proxyBar.setBasePath("");
             proxyBar.setShowInStreamsEnabled(false);
         }
 
-        HttpEditorPanel<HttpRequestEditor> reqEditor =
-                new HttpEditorPanel<>("Client Request",
-                        HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
-
-        HttpMultiEditorPanel parsedRequestPanel = new HttpMultiEditorPanel("Parsed Request", HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY));
-        List<List<byte[]>> groups = new ArrayList<>();
-        parsedRequestPanel.addAll(groups);
-        useForwardedRequest = false;
+        // DO NOT recreate reqEditor! Only recreate parsedRequestPanel
+        HttpMultiEditorPanel parsedRequestPanel = new HttpMultiEditorPanel(
+                "Parsed Request",
+                HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY)
+        );
+        parsedRequestPanel.addAll(new ArrayList<>());
 
         StreamComboBox<byte[]> streamsBox = new StreamComboBox<>("Request from Stream");
-        streamsBox.addItem(new ComboItem<>("Base Req", ("GET /"+proxyBar.getBasePath()+" HTTP/1.1\r\nHost: "+proxyBar.getDomainName()+"\r\nContent-Length: 10\r\n\r\n0123456789").getBytes()));
-        for (StreamController sc : streamControllers){
+        streamsBox.addItem(new ComboItem<>("Base Req", ("GET / HTTP/1.1\r\nHost: " + proxyBar.getDomainName() + "\r\nContent-Length: 10\r\n\r\n0123456789").getBytes()));
+        for (StreamController sc : streamControllers) {
             streamsBox.addItem(new ComboItem<>(sc.getName(), sc.getRequest()));
         }
-
-        reqEditor.setBytes(streamsBox.getValueAt(selectedReqId));
         streamsBox.setSelectedIndex(selectedReqId);
 
-        reqEditor.setComponent(streamsBox, e->{ selectedReqId = streamsBox.getSelectedIndex(); reqEditor.setBytes(streamsBox.getSelectedValue()); });
+        // Only update reqEditor content if user picks a new stream
+        reqEditor.setComponent(streamsBox, e -> {
+            selectedReqId = streamsBox.getSelectedIndex();
+            reqEditor.setBytes(streamsBox.getSelectedValue());
 
-        parsedRequestPanel.getEditorPanel().setComponent(new ActionButton("Test"), e ->{
-            HttpParserController.setRequestGroupsEditor(proxyControllers.get(selectedProxyId).getModel(), reqEditor.getBytes(), this, parsedRequestPanel);
-        }) ;
+            List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
+                    proxyControllers.get(selectedProxyId).getModel(),
+                    reqEditor.getBytes(),
+                    this
+            );
+            parsedRequestPanel.addAll(panelGroups);
+        });
+
+        parsedRequestPanel.getEditorPanel().setComponent(new ActionButton("Test"), e -> {
+            List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
+                    proxyControllers.get(selectedProxyId).getModel(),
+                    reqEditor.getBytes(),
+                    this
+            );
+            parsedRequestPanel.addAll(panelGroups);
+        });
+
+        // Always show the persistent reqEditor (never recreate), but recreate parsedRequestPanel
         view.showHttpEditors(reqEditor, parsedRequestPanel);
 
-        HttpParserController.setRequestGroupsEditor(proxyControllers.get(selectedProxyId).getModel(), reqEditor.getBytes(), this, parsedRequestPanel);
+// Immediately run the test logic to update the parsed results
+        List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
+                proxyControllers.get(selectedProxyId).getModel(),
+                reqEditor.getBytes(),
+                this
+        );
+        parsedRequestPanel.addAll(panelGroups);
     }
+
 
     public List<ProxyModel> sortByDistanceToClient(Set<ProxyModel> proxies) {
         if (proxies == null || proxies.isEmpty()) return Collections.emptyList();
@@ -604,7 +623,6 @@ public class NetworkController {
         updateProxyBarVisibility();
         proxyBar.setDomainName("");
         proxyBar.setDescription("");
-        proxyBar.setBasePath("");
         proxyBar.setShowInStreamsEnabled(false);
         view.hideHttpEditors();
     }
@@ -680,6 +698,63 @@ public class NetworkController {
         menu.add(addProxy);
         menu.show(canvas, x, y);
     }
+
+    public List<ProxyModel> getDirectConnections(String proxyId) {
+        Set<String> directIds = new HashSet<>();
+        for (ConnectionModel c : model.getConnections()) {
+            if (c.getFromId().equals(proxyId)) {
+                directIds.add(c.getToId());
+            } else if (c.getToId().equals(proxyId)) {
+                directIds.add(c.getFromId());
+            }
+        }
+        List<ProxyModel> result = new ArrayList<>();
+        for (String id : directIds) {
+            ProxyModel p = model.getProxy(id);
+            if (p != null) result.add(p);
+        }
+        return result;
+    }
+
+    // Returns true if there exists a path from targetId to the client that passes through viaId
+    public boolean hasPathThroughProxyToClient(String targetId, String viaId) {
+        if (targetId == null || viaId == null) return false;
+        String clientId = null;
+        for (ProxyModel p : model.getProxies()) {
+            if (p.isClient()) {
+                clientId = p.getId();
+                break;
+            }
+        }
+        if (clientId == null || targetId.equals(clientId)) return false;
+        // Standard BFS from targetId to client, keeping track if viaId is traversed
+        Set<String> visited = new HashSet<>();
+        Queue<List<String>> queue = new LinkedList<>();
+        List<String> start = new ArrayList<>();
+        start.add(targetId);
+        queue.add(start);
+        visited.add(targetId);
+        while (!queue.isEmpty()) {
+            List<String> path = queue.poll();
+            String current = path.get(path.size() - 1);
+            if (current.equals(clientId)) {
+                // Check if viaId is in the path (excluding start or end)
+                for (int i = 1; i < path.size() - 1; i++) {
+                    if (path.get(i).equals(viaId)) return true;
+                }
+            }
+            for (ProxyModel neighbor : getDirectConnections(current)) {
+                if (!visited.contains(neighbor.getId())) {
+                    visited.add(neighbor.getId());
+                    List<String> newPath = new ArrayList<>(path);
+                    newPath.add(neighbor.getId());
+                    queue.add(newPath);
+                }
+            }
+        }
+        return false;
+    }
+
 
     public ProxyController getProxyController(String proxyId) {
         return proxyControllers.get(proxyId);

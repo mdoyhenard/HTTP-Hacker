@@ -1,7 +1,7 @@
 package httpraider.view.panels;
 
 import httpraider.view.components.CustomTabbedPane;
-import httpraider.view.components.MainTabbedPaneUI;
+import httpraider.view.components.helpers.MainTabbedPaneUI;
 import javax.swing.*;
 import java.awt.*;
 

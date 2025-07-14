@@ -3,7 +3,6 @@ package httpraider.controller.engines;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Scriptable;
 
-import java.io.UnsupportedEncodingException;
 import java.util.*;
 
 public final class JSEngine {
@@ -64,7 +63,7 @@ public final class JSEngine {
             out.put("outHeaders", null);
             out.put("outBuffer", null);
 
-            if (script == null || script.trim().isEmpty()) throw new IllegalArgumentException("El script JS está vacío o es null");
+            if (script == null || script.trim().isEmpty()) throw new IllegalArgumentException("The script is empty or null");
             run(script, in, out);
 
             byte[] outHeaders = out.get("outHeaders") == null ? "".getBytes() : out.get("outHeaders").toString().getBytes();
@@ -83,7 +82,7 @@ public final class JSEngine {
             Map<String, Object> out = new HashMap<>();
             out.put("outHeaderLines", null);
 
-            if (script == null || script.trim().isEmpty()) throw new IllegalArgumentException("El script JS está vacío o es null");
+            if (script == null || script.trim().isEmpty()) throw new IllegalArgumentException("The script is empty or null");
             run(script, in, out);
 
             List<String> outHeaderList = new ArrayList<>();
@@ -115,22 +114,9 @@ public final class JSEngine {
             out.put("outBody", null);
             out.put("outBuffer", null);
 
-            if (script == null || script.trim().isEmpty()) throw new IllegalArgumentException("El script JS está vacío o es null");
+            if (script == null || script.trim().isEmpty()) throw new IllegalArgumentException("The script is empty or null");
             run(script, in, out);
 
-            List<String> outHeaderList = new ArrayList<>();
-            org.mozilla.javascript.NativeArray nativeArray = (org.mozilla.javascript.NativeArray) out.get("outLines");
-            for (int i = 0; i < nativeArray.getLength(); i++) {
-                Object val = nativeArray.get(i, nativeArray);
-                if (val instanceof org.mozilla.javascript.NativeJavaObject) {
-                    Object realObj = ((org.mozilla.javascript.NativeJavaObject) val).unwrap();
-                    outHeaderList.add(realObj != null ? realObj.toString() : null);
-                } else if (val != null) {
-                    outHeaderList.add(val.toString());
-                } else {
-                    outHeaderList.add(null);
-                }
-            }
             byte[] outBody = out.get("outBody") == null ? "".getBytes() : out.get("outBody").toString().getBytes();
             byte[] outBuffer = out.get("outBuffer") == null ? "".getBytes() : out.get("outBuffer").toString().getBytes();
             return new byte[][] { outBody, outBuffer };
@@ -138,5 +124,25 @@ public final class JSEngine {
             return new byte[][] { body, buffer };
         }
     }
-}
 
+    public static Object runJsBooleanRule(String js, String headers, String body) {
+        // Provide input variables 'headers' and 'body', expect 'result' or 'output' boolean as output
+        org.mozilla.javascript.Context ctx = org.mozilla.javascript.Context.enter();
+        try {
+            org.mozilla.javascript.Scriptable scope = ctx.initStandardObjects();
+            scope.put("headers", scope, headers);
+            scope.put("body", scope, body);
+            ctx.evaluateString(scope, js, "rule", 1, null);
+            Object result = org.mozilla.javascript.ScriptableObject.getProperty(scope, "result");
+            if (result == org.mozilla.javascript.Scriptable.NOT_FOUND) {
+                result = org.mozilla.javascript.ScriptableObject.getProperty(scope, "output");
+            }
+            if (result instanceof Boolean) return (Boolean) result;
+            if (result instanceof String) return Boolean.parseBoolean((String) result);
+            return false;
+        } finally {
+            org.mozilla.javascript.Context.exit();
+        }
+    }
+
+}

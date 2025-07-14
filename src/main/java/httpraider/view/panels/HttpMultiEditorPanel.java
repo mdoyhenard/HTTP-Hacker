@@ -1,15 +1,13 @@
 package httpraider.view.panels;
 
 import burp.api.montoya.http.message.requests.HttpRequest;
-import burp.api.montoya.ui.editor.Editor;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
-import httpraider.view.components.HttpRequestEditorHighlighter;
+import httpraider.view.components.helpers.HttpRequestEditorHighlighter;
 
 import javax.swing.*;
 import javax.swing.border.MatteBorder;
 import java.awt.*;
 import java.awt.event.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.List;
 

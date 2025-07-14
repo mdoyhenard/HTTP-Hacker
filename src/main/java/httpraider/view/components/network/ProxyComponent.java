@@ -1,4 +1,4 @@
-package httpraider.view.components;
+package httpraider.view.components.network;
 
 import httpraider.controller.NetworkController;
 

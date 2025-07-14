@@ -1,9 +1,11 @@
 package httpraider.view.panels;
 
-import burp.api.montoya.ui.editor.HttpRequestEditor;
-import burp.api.montoya.ui.editor.WebSocketMessageEditor;
 import burp.api.montoya.ui.editor.EditorOptions;
 import extension.HTTPRaiderExtension;
+import httpraider.view.panels.parser.HeaderLinesParserPanel;
+import httpraider.view.panels.parser.LoadBalancingParserPanel;
+import httpraider.view.panels.parser.MessageLengthParserPanel;
+import httpraider.view.panels.parser.RequestLineParserPanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,129 +13,87 @@ import java.awt.*;
 public class HttpParserPanel extends JFrame {
 
     private final JTabbedPane tabbedPane;
-    private final ParserCodePanel codePanel;
-    private final ParserSettingsPanel settingsPanel;
+    private final HeaderLinesParserPanel headerLinesParserPanel;
+    private final RequestLineParserPanel requestLineParserPanel;
+    private final MessageLengthParserPanel messageLengthParserPanel;
+    private final LoadBalancingParserPanel loadBalancingParserPanel;
+
     private final JButton testButton;
     private final JButton saveButton;
-    private final HttpEditorPanel<HttpRequestEditor> reqEditorPanel;
-    private final HttpEditorPanel<WebSocketMessageEditor> parsedEditorPanel;
+
+    private final HttpEditorPanel inputEditorPanel;
+    private final HttpMultiEditorPanel resultEditorPanel;
+
+    private final JSplitPane mainSplitPane;
+    private final JSplitPane editorsSplitPane;
 
     public HttpParserPanel() {
-        super("HTTP Parser");
+        super("HTTP Parser Configuration");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-
         setMinimumSize(new Dimension(1100, 800));
         setPreferredSize(new Dimension(1100, 850));
-        setLayout(new BorderLayout());
 
-        setJMenuBar(createMenuBar());
-
+        // --- Tabs
         tabbedPane = new JTabbedPane();
-        codePanel = new ParserCodePanel();
-        settingsPanel = new ParserSettingsPanel();
+        headerLinesParserPanel = new HeaderLinesParserPanel();
+        requestLineParserPanel = new RequestLineParserPanel();
+        messageLengthParserPanel = new MessageLengthParserPanel();
+        loadBalancingParserPanel = new LoadBalancingParserPanel();
 
-        tabbedPane.addTab("Settings", settingsPanel);
-        tabbedPane.addTab("Code", codePanel);
+        tabbedPane.addTab("Headers", headerLinesParserPanel);
+        tabbedPane.addTab("Request Line", requestLineParserPanel);
+        tabbedPane.addTab("Message-Length", messageLengthParserPanel);
+        tabbedPane.addTab("Forwarding Rules", loadBalancingParserPanel);
+        tabbedPane.addTab("Firewall Rules", null);
 
-        JPanel centerBar = new JPanel(new BorderLayout());
-        centerBar.setBorder(BorderFactory.createMatteBorder(2, 0, 0, 0, new Color(180,180,180)));
-
+        // --- Center bar with Test/Save and border
+        JPanel buttonBar = new JPanel();
+        buttonBar.setLayout(new BoxLayout(buttonBar, BoxLayout.Y_AXIS));
+        buttonBar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(180,180,180)));
+        JPanel innerFlowPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 24, 4));
         testButton = new JButton("Test");
-        testButton.setBackground(new Color(255, 137, 0));
-        testButton.setForeground(Color.WHITE);
-        testButton.setFocusPainted(false);
-        testButton.setPreferredSize(new Dimension(75, 24));
-        testButton.setFont(testButton.getFont().deriveFont(Font.BOLD));
-        testButton.setFont(testButton.getFont().deriveFont(Font.BOLD, 13f));
-
-
         saveButton = new JButton("Save");
-        saveButton.setForeground(Color.BLACK);
-        saveButton.setFocusPainted(false);
-        saveButton.setPreferredSize(new Dimension(75, 24));
-        saveButton.setFont(saveButton.getFont().deriveFont(Font.BOLD));
-        saveButton.setFont(saveButton.getFont().deriveFont(Font.BOLD, 13f));
+        innerFlowPanel.add(testButton);
+        innerFlowPanel.add(saveButton);
+        buttonBar.add(Box.createVerticalStrut(8));
+        buttonBar.add(innerFlowPanel);
+        buttonBar.add(Box.createVerticalStrut(2));
+        buttonBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
 
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 27, 0));
-        buttonsPanel.setOpaque(false);
-        buttonsPanel.add(testButton);
-        buttonsPanel.add(saveButton);
-
-        centerBar.add(Box.createVerticalStrut(10), BorderLayout.NORTH);
-        centerBar.add(Box.createVerticalStrut(1), BorderLayout.SOUTH);
-        centerBar.add(Box.createHorizontalStrut(1), BorderLayout.EAST);
-        centerBar.add(Box.createHorizontalStrut(1), BorderLayout.WEST);
-        centerBar.add(buttonsPanel, BorderLayout.CENTER);
-
-
-
+        // --- Top: Config + Button Bar
         JPanel topPanel = new JPanel();
         topPanel.setLayout(new BorderLayout());
-        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         topPanel.add(tabbedPane, BorderLayout.CENTER);
-        topPanel.add(centerBar, BorderLayout.SOUTH);
+        topPanel.add(buttonBar, BorderLayout.SOUTH);
 
-        // HttpEditors
-        reqEditorPanel = new HttpEditorPanel<>("Base Request",
+        // --- Editors (Bottom)
+        inputEditorPanel = new HttpEditorPanel("Sample Request",
                 HTTPRaiderExtension.API.userInterface().createHttpRequestEditor());
-        parsedEditorPanel = new HttpEditorPanel<>("Parsed Request",
-                HTTPRaiderExtension.API.userInterface().createWebSocketMessageEditor(EditorOptions.READ_ONLY));
+        resultEditorPanel = new HttpMultiEditorPanel("Parsed Result",
+                HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY));
 
-        // Editors horizontally in split pane
-        JSplitPane editorsSplit = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, reqEditorPanel, parsedEditorPanel);
-        editorsSplit.setResizeWeight(0.5);
-        editorsSplit.setBorder(null);
+        editorsSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, inputEditorPanel, resultEditorPanel);
+        editorsSplitPane.setResizeWeight(0.5);
 
-        // Split pane: top (everything except editors), bottom (editors)
-        JSplitPane mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, topPanel, editorsSplit);
-        mainSplit.setResizeWeight(0.65);
-        mainSplit.setDividerSize(7);
-        mainSplit.setBorder(null);
+        // --- Main vertical split: Top = config+bar, Bottom = editors
+        mainSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, topPanel, editorsSplitPane);
+        mainSplitPane.setResizeWeight(0.40);
+        mainSplitPane.setDividerSize(7);
 
-        add(mainSplit, BorderLayout.CENTER);
-
+        getContentPane().setLayout(new BorderLayout());
+        getContentPane().add(mainSplitPane, BorderLayout.CENTER);
         pack();
         setLocationRelativeTo(null);
     }
 
-    private JMenuBar createMenuBar() {
-        JMenuBar menuBar = new JMenuBar();
-        JMenu file = new JMenu("File");
-        JMenuItem save = new JMenuItem("Save");
-        JMenuItem export = new JMenuItem("Export");
-        JMenuItem load = new JMenuItem("Load");
-        file.add(save);
-        file.add(export);
-        file.add(load);
-
-        export.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.showSaveDialog(this);
-        });
-        load.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.showOpenDialog(this);
-        });
-
-        JMenu help = new JMenu("Help");
-        JMenuItem helpSettings = new JMenuItem("How to use Settings mode");
-        JMenuItem helpCode = new JMenuItem("How to use Code mode");
-        help.add(helpSettings);
-        help.add(helpCode);
-
-        menuBar.add(file);
-        menuBar.add(help);
-        return menuBar;
-    }
-
-    public JTabbedPane getTabbedPane() {
-        return tabbedPane;
-    }
-
+    public HeaderLinesParserPanel getHeaderLinesParserPanel() { return headerLinesParserPanel; }
+    public RequestLineParserPanel getRequestLineParserPanel() { return requestLineParserPanel; }
+    public MessageLengthParserPanel getMessageLengthParserPanel() { return messageLengthParserPanel; }
+    public LoadBalancingParserPanel getLoadBalancingParserPanel() { return loadBalancingParserPanel; }
     public JButton getTestButton() { return testButton; }
     public JButton getSaveButton() { return saveButton; }
-    public HttpEditorPanel<HttpRequestEditor> getReqEditorPanel() { return reqEditorPanel; }
-    public HttpEditorPanel<WebSocketMessageEditor> getParsedEditorPanel() { return parsedEditorPanel; }
-    public ParserCodePanel getCodePanel() { return codePanel; }
-    public ParserSettingsPanel getSettingsPanel() { return settingsPanel; }
+    public HttpEditorPanel getInputEditorPanel() { return inputEditorPanel; }
+    public HttpMultiEditorPanel getResultEditorPanel() { return resultEditorPanel; }
+    public JSplitPane getEditorsSplitPane() { return editorsSplitPane; }
+    public JTabbedPane getTabbedPane() { return tabbedPane; }
 }
