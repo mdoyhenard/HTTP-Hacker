@@ -57,6 +57,21 @@ public final class StreamController extends AbstractController<StreamModel, Stre
     private void setTestActionListener(){
         view.setTestButtonActionListener(e -> {
             byte[] req = view.getClientRequest();
+            
+            // Apply tag resolution if tags are enabled
+            if (tagsEnabled) {
+                int valid = TagEngine.validate(req);
+                if (valid == TagEngine.CORRECT) {
+                    req = TagEngine.resolve(req);
+                } else {
+                    JOptionPane.showMessageDialog(view, 
+                        "Error processing tag at position: " + valid, 
+                        "Tag Processing Error", 
+                        JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+            
             for (ProxyModel proxyModel : proxyEditors.keySet()){
                 List<List<byte[]>> groups = httpraider.parser.ParserChainRunner.parseFinalGroupsForPanel(
                         proxyModel,
@@ -118,6 +133,10 @@ public final class StreamController extends AbstractController<StreamModel, Stre
 
     public void setTagsEnabled(boolean tagsEnabled) {
         this.tagsEnabled = tagsEnabled;
+    }
+    
+    public boolean isTagsEnabled() {
+        return this.tagsEnabled;
     }
 
     public void setClientRequest(byte[] request) {
@@ -293,7 +312,7 @@ public final class StreamController extends AbstractController<StreamModel, Stre
 
     private void startReading() {
         SwingUtilities.invokeLater(() -> {
-            Timer updateTimer = new Timer(20, e -> {
+            Timer updateTimer = new Timer(16, e -> {
                 int pos = view.getResponseQueueBytes().length;
                 view.setResponseQueue(response.toByteArray());
                 view.setResponseQueueCaretPosition(pos);
@@ -349,9 +368,18 @@ public final class StreamController extends AbstractController<StreamModel, Stre
             return s.get();
         }
         java.util.concurrent.atomic.AtomicReference<T> ref = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+        SwingUtilities.invokeLater(() -> {
+            try {
+                ref.set(s.get());
+            } finally {
+                latch.countDown();
+            }
+        });
         try {
-            SwingUtilities.invokeAndWait(() -> ref.set(s.get()));
-        } catch (Exception ex) {
+            latch.await();
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(ex);
         }
         return ref.get();

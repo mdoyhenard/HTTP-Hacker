@@ -15,10 +15,11 @@ public final class TagEngine {
     private static final Pattern START  = Pattern.compile("<start_([0-9]+)>");
     private static final Pattern END    = Pattern.compile("<end_([0-9]+)>");
     private static final Pattern SIMPLE = Pattern.compile("<(int|hex)_([0-9]+)>");
-    private static final Pattern REPEAT = Pattern.compile("<repeat\\(([0-9]+),\"([^\"]*)\"\\)>");
+    private static final Pattern REPEAT_SEGMENT = Pattern.compile("<repeat_([0-9]+)\\(\"([^\"]*)\"\\)>");
+    private static final Pattern REPEAT_FIXED = Pattern.compile("<repeat\\(\"([^\"]*)\",\s*([0-9]+)\\)>");
 
     private static final Pattern TOKEN  = Pattern.compile(
-            "<start_([0-9]+)>|<end_([0-9]+)>|<repeat\\(([0-9]+),\"[^\"]*\"\\)>"
+            "<start_([0-9]+)>|<end_([0-9]+)>|<repeat_([0-9]+)\\(\"[^\"]*\"\\)>|<repeat\\(\"[^\"]*\",\s*([0-9]+)\\)>"
     );
 
     private record Tag(String id, int pos) {}
@@ -44,10 +45,13 @@ public final class TagEngine {
                 Tag open = stack.pop();
                 if (!open.id.equals(id)) return pos;
                 closed.add(id);
-            } else {
+            } else if (t.group(3) != null) {
+                // <repeat_N("string")>
                 String id = t.group(3);
                 for (Tag open : stack) if (open.id.equals(id)) return pos;
                 repeatFirstPos.putIfAbsent(id, pos);
+            } else if (t.group(4) != null) {
+                // <repeat("string", amount)> - no validation needed
             }
         }
         if (!stack.isEmpty()) return stack.peek().pos;
@@ -139,20 +143,43 @@ public final class TagEngine {
     }
 
     private static String replaceReadyRepeats(String txt, Map<String, Integer> val) {
-        Matcher m = REPEAT.matcher(txt);
-        StringBuilder sb = new StringBuilder();
-        while (m.find()) {
-            String id = m.group(1);
+        // Handle <repeat_N("string")>
+        Matcher m1 = REPEAT_SEGMENT.matcher(txt);
+        StringBuilder sb1 = new StringBuilder();
+        while (m1.find()) {
+            String id = m1.group(1);
             if (!val.containsKey(id)) continue;
-            String rep = m.group(2).repeat(val.get(id));
-            m.appendReplacement(sb, Matcher.quoteReplacement(rep));
+            String rep = m1.group(2).repeat(val.get(id));
+            m1.appendReplacement(sb1, Matcher.quoteReplacement(rep));
         }
-        m.appendTail(sb);
-        return sb.toString();
+        m1.appendTail(sb1);
+        
+        // Handle <repeat("string", amount)>
+        String result = sb1.toString();
+        Matcher m2 = REPEAT_FIXED.matcher(result);
+        StringBuilder sb2 = new StringBuilder();
+        while (m2.find()) {
+            String str = m2.group(1);
+            int amount = Integer.parseInt(m2.group(2));
+            String rep = str.repeat(amount);
+            m2.appendReplacement(sb2, Matcher.quoteReplacement(rep));
+        }
+        m2.appendTail(sb2);
+        return sb2.toString();
     }
 
     private static String replaceAll(String txt, Map<String, Integer> val) {
-        txt = REPEAT.matcher(txt).replaceAll(m -> m.group(2).repeat(val.get(m.group(1))));
+        // Handle <repeat_N("string")>
+        txt = REPEAT_SEGMENT.matcher(txt).replaceAll(m -> {
+            String id = m.group(1);
+            Integer count = val.get(id);
+            return count != null ? m.group(2).repeat(count) : m.group(0);
+        });
+        
+        // Handle <repeat("string", amount)>
+        txt = REPEAT_FIXED.matcher(txt).replaceAll(m -> m.group(1).repeat(Integer.parseInt(m.group(2))));
+        
+        // Handle <int_N> and <hex_N>
         txt = SIMPLE.matcher(txt).replaceAll(m -> {
             int v = val.get(m.group(2));
             return m.group(1).equals("hex") ? Integer.toHexString(v) : Integer.toString(v);

@@ -12,4 +12,6 @@ public interface ToolControllerInterface {
 
     void attach();
 
+    default void detach() {}
+
 }

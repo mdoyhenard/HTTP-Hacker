@@ -3,6 +3,7 @@ package httpraider.controller.tools;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import httpraider.controller.StreamController;
 import httpraider.model.CustomTagModel;
+import httpraider.model.TagScriptDefaults;
 import httpraider.view.panels.JSCodeEditorPanel;
 import httpraider.view.panels.EditorToolsPanel;
 import httpraider.view.panels.HttpEditorPanel;
@@ -62,7 +63,7 @@ public final class EditorToolController implements ToolControllerInterface, Cust
         this.view = view;
         this.editor = editor;
         this.streamController = streamController;
-        timer = new Timer(50, e -> refresh());
+        timer = new Timer(500, e -> refresh());
         view.setEnableTagsListener(e -> streamController.setTagsEnabled(view.tagsEnabled()));
         view.setTagEnabled(true);
         streamController.setTagsEnabled(true);
@@ -80,6 +81,12 @@ public final class EditorToolController implements ToolControllerInterface, Cust
         view.getAddCustomTagButton().addActionListener(this::onAddCustomTagButton);
         tagManager.addListener(this);
         tagsChanged(tagManager.getTags());
+    }
+
+    @Override
+    public void detach() {
+        timer.stop();
+        tagManager.removeListener(this);
     }
 
     private void refresh() {
@@ -153,7 +160,7 @@ public final class EditorToolController implements ToolControllerInterface, Cust
     }
 
     private void onAddCustomTagButton(ActionEvent e) {
-        CustomTagModel def = new CustomTagModel("", "output = input;");
+        CustomTagModel def = new CustomTagModel("myTag", TagScriptDefaults.getDefaultCustomTagScript());
         tagManager.addTag(def);
     }
 

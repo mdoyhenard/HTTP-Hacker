@@ -53,6 +53,9 @@ public class HttpParserModel implements Serializable {
     // --- Load balancing rules ---
     private List<LoadBalancingRule> loadBalancingRules = new ArrayList<>();
 
+    // --- Firewall rules ---
+    private List<FirewallRule> firewallRules = new ArrayList<>();
+
     public HttpParserModel() {
         headerLineEndings = new ArrayList<>();
         headerLineEndings.add("\\r\\n");
@@ -84,17 +87,18 @@ public class HttpParserModel implements Serializable {
         customHttpVersion = "";
 
         useHeaderLinesJs = false;
-        headerLinesScript = "";
+        headerLinesScript = getDefaultHeaderLinesScript();
 
         useRequestLineJs = false;
-        requestLineScript = "";
+        requestLineScript = getDefaultRequestLineScript();
 
         useMessageLengthJs = false;
-        messageLengthScript = "";
+        messageLengthScript = getDefaultMessageLengthScript();
 
         outputBodyEncoding = MessageLenBodyEncoding.DONT_MODIFY;
 
         loadBalancingRules = new ArrayList<>();
+        firewallRules = new ArrayList<>();
     }
 
     // --- Getters & Setters ---
@@ -174,6 +178,11 @@ public class HttpParserModel implements Serializable {
         this.loadBalancingRules = rules != null ? new ArrayList<>(rules) : new ArrayList<>();
     }
 
+    public List<FirewallRule> getFirewallRules() { return firewallRules; }
+    public void setFirewallRules(List<FirewallRule> rules) {
+        this.firewallRules = rules != null ? new ArrayList<>(rules) : new ArrayList<>();
+    }
+
     // --- Nested types ---
 
     public enum DuplicateHandling {
@@ -211,6 +220,161 @@ public class HttpParserModel implements Serializable {
 
         public DuplicateHandling getDuplicateHandling() { return duplicateHandling; }
         public void setDuplicateHandling(DuplicateHandling duplicateHandling) { this.duplicateHandling = duplicateHandling; }
+    }
+
+    // --- Default JavaScript Templates ---
+
+    private static String getDefaultHeaderLinesScript() {
+        return """
+            // Input: headerLines (array), headerBlock (string)
+            // Output: outHeaderLines (array)
+            
+            function findHeader(lines, name) {
+                var lowerName = name.toLowerCase();
+                for (var i = 0; i < lines.length; i++) {
+                    if (lines[i].toLowerCase().indexOf(lowerName + ':') === 0) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+            
+            function getHeaderValue(lines, name) {
+                var idx = findHeader(lines, name);
+                if (idx >= 0) {
+                    var colonPos = lines[idx].indexOf(':');
+                    return lines[idx].substring(colonPos + 1).trim();
+                }
+                return null;
+            }
+            
+            function setHeader(lines, name, value) {
+                var idx = findHeader(lines, name);
+                var newHeader = name + ': ' + value;
+                if (idx >= 0) {
+                    lines[idx] = newHeader;
+                } else {
+                    lines.push(newHeader);
+                }
+            }
+            
+            function removeHeader(lines, name) {
+                var idx = findHeader(lines, name);
+                if (idx >= 0) {
+                    lines.splice(idx, 1);
+                }
+            }
+            
+            var processedLines = [];
+            for (var i = 0; i < headerLines.length; i++) {
+                processedLines.push(headerLines[i]);
+            }
+            
+            // setHeader(processedLines, 'X-Custom', 'value');
+            
+            outHeaderLines = processedLines;
+            """;
+    }
+
+    private static String getDefaultRequestLineScript() {
+        return """
+            // Input: input (string)
+            // Output: output (string)
+            
+            function parseRequestLine(line) {
+                var parts = line.split(' ');
+                if (parts.length >= 3) {
+                    return {
+                        method: parts[0],
+                        path: parts.slice(1, -1).join(' '),
+                        version: parts[parts.length - 1]
+                    };
+                }
+                return null;
+            }
+            
+            function urlEncode(str) {
+                return encodeURIComponent(str).replace(/%20/g, '+');
+            }
+            
+            function urlDecode(str) {
+                return decodeURIComponent(str.replace(/\\+/g, '%20'));
+            }
+            
+            var parsed = parseRequestLine(input);
+            
+            if (parsed) {
+                // parsed.method = 'POST';
+                
+                output = parsed.method + ' ' + parsed.path + ' ' + parsed.version;
+            } else {
+                output = input;
+            }
+            """;
+    }
+
+    private static String getDefaultMessageLengthScript() {
+        return """
+            // Input: headerLines (array), body (string), buffer (string)
+            // Output: outBody (string), outBuffer (string)
+            
+            function parseChunkedBody(data) {
+                var chunks = [];
+                var remaining = data;
+                
+                while (remaining.length > 0) {
+                    var lineEnd = remaining.indexOf('\\r\\n');
+                    if (lineEnd === -1) break;
+                    
+                    var sizeLine = remaining.substring(0, lineEnd);
+                    var chunkSize = parseInt(sizeLine, 16);
+                    
+                    if (isNaN(chunkSize) || chunkSize < 0) break;
+                    
+                    if (chunkSize === 0) {
+                        remaining = remaining.substring(lineEnd + 2);
+                        var endPos = remaining.indexOf('\\r\\n\\r\\n');
+                        if (endPos >= 0) {
+                            remaining = remaining.substring(endPos + 4);
+                        } else {
+                            remaining = '';
+                        }
+                        break;
+                    }
+                    
+                    var chunkStart = lineEnd + 2;
+                    var chunkEnd = chunkStart + chunkSize;
+                    
+                    if (chunkEnd + 2 > remaining.length) break;
+                    
+                    chunks.push(remaining.substring(chunkStart, chunkEnd));
+                    remaining = remaining.substring(chunkEnd + 2);
+                }
+                
+                return {
+                    body: chunks.join(''),
+                    remaining: remaining
+                };
+            }
+            
+            function createChunkedBody(plainBody) {
+                var chunked = '';
+                var chunkSize = 1024;
+                
+                for (var i = 0; i < plainBody.length; i += chunkSize) {
+                    var chunk = plainBody.substring(i, Math.min(i + chunkSize, plainBody.length));
+                    chunked += chunk.length.toString(16) + '\\r\\n' + chunk + '\\r\\n';
+                }
+                
+                chunked += '0\\r\\n\\r\\n';
+                return chunked;
+            }
+            
+            outBody = body;
+            outBuffer = buffer;
+            
+            // var decoded = parseChunkedBody(body + buffer);
+            """;
     }
 
 }

@@ -151,24 +151,28 @@ public class EditorToolsPanel extends JPanel {
           <tbody>
             <tr>
               <td><code>&lt;start_<i>ID</i>&gt; … &lt;end_<i>ID</i>&gt;</code></td>
-              <td>Marks a block; its <b>byte length</b> is measured.</td>
+              <td>Marks a data segment; its <b>byte length</b> is measured.</td>
             </tr>
             <tr>
               <td><code>&lt;int_<i>ID</i>&gt;</code></td>
-              <td>Decimal length of that block.</td>
+              <td>Decimal length of segment <i>ID</i>.</td>
             </tr>
             <tr>
-              <td><code>&lt;hex_<i>ID</i&gt;</code></td>
-              <td>The same length in hexadecimal.</td>
+              <td><code>&lt;hex_<i>ID</i>&gt;</code></td>
+              <td>Hexadecimal length of segment <i>ID</i>.</td>
             </tr>
             <tr>
-              <td><code>&lt;repeat(<i>ID</i>, "txt")&gt;</code></td>
+              <td><code>&lt;repeat_<i>ID</i>("txt")&gt;</code></td>
               <td>Repeats <code>txt</code> exactly <i>ID-length</i> times
-                  (must be <i>outside</i> its own block).</td>
+                  (must be <i>outside</i> its own segment).</td>
+            </tr>
+            <tr>
+              <td><code>&lt;repeat("txt", <i>N</i>)&gt;</code></td>
+              <td>Repeats <code>txt</code> exactly <i>N</i> times.</td>
             </tr>
             <tr>
               <td><code>&lt;<i>tagName</i>_<i>ID</i>&gt;</code></td>
-              <td>Custom tag: runs your JavaScript on the block’s contents and uses its <code>output</code>.</td>
+              <td>Custom tag: runs your JavaScript on segment <i>ID</i>'s contents and replaces with <code>output</code>.</td>
             </tr>
           </tbody>
         </table>
@@ -176,37 +180,48 @@ public class EditorToolsPanel extends JPanel {
         <h2>Nested Example</h2>
     
         <div class="label">Input</div>
-        <pre>&lt;repeat(1,"*")&gt;
+        <pre>&lt;repeat_1("*")&gt;
     &lt;start_1&gt;Hi &lt;start_2&gt;abc&lt;end_2&gt; &lt;int_2&gt;&lt;end_1&gt; &lt;int_1&gt;</pre>
     
         <div class="label">Steps</div>
-        <pre>block 2 = 3 bytes  → &lt;int_2&gt; = 3
-    block 1 = 13 bytes → &lt;int_1&gt; = 13
-    repeat   = 13 × "*"</pre>
+        <pre>segment 2 = 3 bytes  → &lt;int_2&gt; = 3
+    segment 1 = 10 bytes → &lt;int_1&gt; = 10  
+    repeat = 10 × "*"</pre>
     
         <div class="label">Result</div>
-        <pre>************* Hi abc3 13</pre>
+        <pre>**********Hi abc 3 10</pre>
     
         <h2>Custom&nbsp;Tag&nbsp;Example</h2>
     
         <div class="label">Definition</div>
-        <pre>
-    Tag "pepe" with JS:
-    <br>
-    var output = input.length + 10;
-        </pre>
+        <pre>Tag "hex64" with JS:
+    output = toBase64(toHex(input));</pre>
     
         <div class="label">Usage</div>
-        <pre>&lt;pepe_1&gt;&lt;start_1&gt;hello&lt;end_1&gt;</pre>
+        <pre>&lt;hex64_1&gt;&lt;start_1&gt;hello&lt;end_1&gt;</pre>
     
         <div class="label">Result</div>
-        <pre>15hello</pre>
+        <pre>NjgNjVjNkNmYmY=hello</pre>
+    
+        <h2>Available Functions in Custom Tags</h2>
+        <ul>
+          <li><code>toHex(str)</code> - Convert to hexadecimal</li>
+          <li><code>fromHex(hex)</code> - Convert from hexadecimal</li>
+          <li><code>toBase64(str)</code> - Base64 encode</li>
+          <li><code>toUrlEncode(str)</code> - URL encode</li>
+          <li><code>xor(str, key)</code> - XOR encryption</li>
+          <li><code>reverse(str)</code> - Reverse string</li>
+          <li><code>pad(str, length, char)</code> - Right pad</li>
+          <li><code>padLeft(str, length, char)</code> - Left pad</li>
+        </ul>
     
         <h2>Quick Rules</h2>
         <ul>
-          <li>IDs are numeric and <b>unique</b> (same ID feeds <code>int</code>, <code>hex</code> &amp; custom tags).</li>
+          <li>IDs are numeric and <b>unique</b> per request.</li>
           <li>Evaluation runs from <b>innermost → outermost</b>.</li>
-          <li>Spaces and line breaks inside a block are counted.</li>
+          <li>Spaces and line breaks inside a segment are counted.</li>
+          <li>Custom tags receive segment content in <code>input</code> variable.</li>
+          <li>Custom tags must set <code>output</code> variable with result.</li>
         </ul>
     
       </div>

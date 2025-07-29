@@ -51,7 +51,20 @@ public final class JSEngine {
         if (script == null || script.trim().isEmpty()) return "";
         run(script, in, out);
         Object result = out.get("output");
-        return result == null ? "" : result.toString();
+        if (result == null) return "";
+        
+        // Fix: Check if Number is actually an integer value
+        if (result instanceof Number) {
+            Number num = (Number) result;
+            double d = num.doubleValue();
+            // Check if it's a whole number
+            if (d == Math.floor(d) && !Double.isInfinite(d)) {
+                // Return as integer string without decimal
+                return String.valueOf(num.longValue());
+            }
+        }
+        
+        return result.toString();
     }
 
     public static byte[][] runEndHeaderScript(byte[] headers, byte[] buffer, String script) {
@@ -139,6 +152,59 @@ public final class JSEngine {
             }
             if (result instanceof Boolean) return (Boolean) result;
             if (result instanceof String) return Boolean.parseBoolean((String) result);
+            return false;
+        } finally {
+            org.mozilla.javascript.Context.exit();
+        }
+    }
+
+    public static boolean runFirewallRule(String js, String input) {
+        org.mozilla.javascript.Context ctx = org.mozilla.javascript.Context.enter();
+        try {
+            org.mozilla.javascript.Scriptable scope = ctx.initStandardObjects();
+            // Set up the input variable
+            scope.put("input", scope, input);
+            
+            // Wrap the JS code to ensure it returns a value
+            String wrappedJs = "(function() { " + js + " })()";
+            Object result = ctx.evaluateString(scope, wrappedJs, "firewall", 1, null);
+            
+            // Direct return value
+            if (result instanceof Boolean) return (Boolean) result;
+            if (result instanceof String) return Boolean.parseBoolean((String) result);
+            if (result instanceof Number) return ((Number) result).intValue() != 0;
+            
+            return false;
+        } catch (Exception e) {
+            // If evaluation fails, don't block the request
+            System.err.println("Firewall rule evaluation error: " + e.getMessage());
+            return false;
+        } finally {
+            org.mozilla.javascript.Context.exit();
+        }
+    }
+
+    public static boolean runFirewallRuleArray(String js, String[] headers) {
+        org.mozilla.javascript.Context ctx = org.mozilla.javascript.Context.enter();
+        try {
+            org.mozilla.javascript.Scriptable scope = ctx.initStandardObjects();
+            // Convert array to JS array
+            Object jsHeaders = Context.javaToJS(headers, scope);
+            scope.put("headers", scope, jsHeaders);
+            
+            // Wrap the JS code to ensure it returns a value
+            String wrappedJs = "(function() { " + js + " })()";
+            Object result = ctx.evaluateString(scope, wrappedJs, "firewall", 1, null);
+            
+            // Direct return value
+            if (result instanceof Boolean) return (Boolean) result;
+            if (result instanceof String) return Boolean.parseBoolean((String) result);
+            if (result instanceof Number) return ((Number) result).intValue() != 0;
+            
+            return false;
+        } catch (Exception e) {
+            // If evaluation fails, don't block the request
+            System.err.println("Firewall rule array evaluation error: " + e.getMessage());
             return false;
         } finally {
             org.mozilla.javascript.Context.exit();

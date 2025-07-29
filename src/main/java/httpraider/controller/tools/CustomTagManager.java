@@ -36,6 +36,10 @@ public class CustomTagManager {
         listeners.add(l);
     }
 
+    public void removeListener(CustomTagListener l) {
+        listeners.remove(l);
+    }
+
     private void notifyListeners() {
         List<CustomTagModel> snapshot = getTags();
         for (CustomTagListener l : listeners) {

@@ -124,19 +124,18 @@ public class HttpEditorPanel<T extends Editor> extends JPanel {
     }
 
     public void setCaretPosition(int pos) {
-        SwingUtilities.invokeLater(() ->
-                SwingUtilities.invokeLater(() -> {
-                    Component ui = editor.uiComponent();
-                    Method setSel = null;
-                    for (Method m : ui.getClass().getMethods()) {
-                        if (m.getParameterCount() == 2 &&
-                                m.getParameterTypes()[0] == int.class &&
-                                m.getParameterTypes()[1] == int.class &&
-                                m.getReturnType() == void.class) {
-                            setSel = m;
-                            break;
-                        }
-                    }
+        SwingUtilities.invokeLater(() -> {
+            Component ui = editor.uiComponent();
+            Method setSel = null;
+            for (Method m : ui.getClass().getMethods()) {
+                if (m.getParameterCount() == 2 &&
+                        m.getParameterTypes()[0] == int.class &&
+                        m.getParameterTypes()[1] == int.class &&
+                        m.getReturnType() == void.class) {
+                    setSel = m;
+                    break;
+                }
+            }
                     if (setSel == null) {
                         return;
                     }
@@ -151,12 +150,11 @@ public class HttpEditorPanel<T extends Editor> extends JPanel {
 
                     int clamp = Math.max(0, Math.min(pos, len));
 
-                    try {
-                        setSel.invoke(ui, clamp, clamp);
-                        ui.requestFocusInWindow();
-                    } catch (Exception ignored) {}
-                })
-        );
+            try {
+                setSel.invoke(ui, clamp, clamp);
+                ui.requestFocusInWindow();
+            } catch (Exception ignored) {}
+        });
     }
 
     // In your HTTPEditorPanel<T extends Editor> class:

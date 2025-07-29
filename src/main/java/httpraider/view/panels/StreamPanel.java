@@ -69,15 +69,12 @@ public class StreamPanel extends JPanel {
                 req.setDividerLocation(0.5);
             }
         });
-        main.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                main.setDividerLocation(0.6);
-            }
-        });
+        main.setResizeWeight(0.5);
+        main.setDividerLocation(0.5);
     }
 
     public void setProxyView(JSplitPane nestedRequests) {
+        deleteMainComponent();
         requestQueue.removeComponent();
         testButton.setVisible(true);
         JSplitPane queues = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, requestQueue, responseQueue);
@@ -85,36 +82,31 @@ public class StreamPanel extends JPanel {
 
         JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, nestedRequests, queues);
         main.setResizeWeight(0.5);
-        add(main);
+        main.setDividerLocation(0.5);
+        queues.setDividerLocation(0.5);
+        add(main, BorderLayout.CENTER);
+        revalidate();
+        repaint();
     }
 
     public void setProxyView(JTabbedPane nestedRequests) {
+        deleteMainComponent();
         requestQueue.removeComponent();
         testButton.setVisible(true);
         JSplitPane queues = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, requestQueue, responseQueue);
-        queues.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                queues.setDividerLocation(0.5);
-            }
-        });
+        queues.setResizeWeight(0.5);
+        queues.setDividerLocation(0.5);
 
         JSplitPane requests = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, clientRequest, nestedRequests);
-        requests.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                requests.setDividerLocation(0.5);
-            }
-        });
+        requests.setResizeWeight(0.5);
+        requests.setDividerLocation(0.5);
 
         JSplitPane main = new JSplitPane(JSplitPane.VERTICAL_SPLIT, requests, queues);
-        main.addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                main.setDividerLocation(0.5);
-            }
-        });
-        add(main);
+        main.setResizeWeight(0.5);
+        main.setDividerLocation(0.5);
+        add(main, BorderLayout.CENTER);
+        revalidate();
+        repaint();
     }
 
 
@@ -212,6 +204,8 @@ public class StreamPanel extends JPanel {
             Object constraint = ((BorderLayout) getLayout()).getConstraints(comp);
             if (BorderLayout.CENTER.equals(constraint)) {
                 remove(comp);
+                revalidate();
+                repaint();
                 break;
             }
         }

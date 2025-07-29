@@ -21,8 +21,7 @@ public class ProxyModel implements Serializable {
 
     public ProxyModel(String id,
                       String domainName,
-                      String description,
-                      String basePath) {
+                      String description) {
         this.id = id == null ? UUID.randomUUID().toString() : id;
         this.domainName = domainName;
         this.description = description;
@@ -32,7 +31,7 @@ public class ProxyModel implements Serializable {
     }
 
     public ProxyModel(String domainName) {
-        this(null, domainName, "", "");
+        this(null, domainName, "");
     }
 
     public String getId() {

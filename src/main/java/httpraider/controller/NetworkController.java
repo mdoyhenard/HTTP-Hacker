@@ -1,5 +1,6 @@
 package httpraider.controller;
 
+import httpraider.view.panels.DiscoverNetworkPanel;
 import burp.api.montoya.ui.editor.EditorOptions;
 import burp.api.montoya.ui.editor.HttpRequestEditor;
 import extension.HTTPRaiderExtension;
@@ -7,6 +8,7 @@ import httpraider.model.network.ConnectionModel;
 import httpraider.model.network.NetworkModel;
 import httpraider.model.network.ProxyModel;
 import httpraider.parser.ParserChainRunner;
+import httpraider.utils.ProxyExporter;
 import httpraider.view.components.*;
 import httpraider.view.components.network.ConnectionLine;
 import httpraider.view.components.network.ProxyComponent;
@@ -48,6 +50,8 @@ public class NetworkController {
     private int selectedReqId = 0;
     private HttpParserController parserController;
     private final HttpEditorPanel<HttpRequestEditor> reqEditor;
+    private HttpMultiEditorPanel cachedParsedRequestPanel;
+    private StreamComboBox<byte[]> cachedStreamsBox;
 
 
     public static final int ICON_WIDTH = 47;
@@ -88,18 +92,28 @@ public class NetworkController {
         canvas.addCanvasMouseMotionListener(canvasMouseMotionListener);
 
         networkBar.setAutoLayoutActionListener(e -> reloadAll(true));
-        networkBar.setDiscoverActionListener(e -> {});
+        networkBar.setDiscoverActionListener(e -> {
+            DiscoverNetworkPanel panel = new DiscoverNetworkPanel(HTTPRaiderExtension.API); // usá tu instancia real
+            JDialog dialog = new JDialog((Frame) null, "Site Map Domains and Requests", true); // true = modal
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.setContentPane(panel);
+            dialog.setSize(800, 500);
+            dialog.setLocationRelativeTo(null); // centra en pantalla
+            dialog.setVisible(true);
+        });
         view.setProxyBarVisible(false);
         installBarListeners();
     }
 
     private void reloadAll(boolean layoutOnLoad) {
-        canvas.clear();
         List<ProxyModel> proxies = new ArrayList<>(model.getProxies());
         if (layoutOnLoad) {
             positions.clear();
             positions.putAll(generateLayout(proxies));
         }
+        
+        canvas.clear();
+        
         for (ProxyModel proxy : proxies) {
             ProxyController controller = proxyControllers.get(proxy.getId());
             if (controller == null) {
@@ -131,7 +145,6 @@ public class NetworkController {
         canvas.setConnectStartProxy(isConnecting ? connectStartProxy : null);
         canvas.setMousePoint(null);
         canvas.setHighlightedConnection(null);
-        canvas.repaint();
         updateProxyBarVisibility();
     }
 
@@ -286,7 +299,6 @@ public class NetworkController {
                 pv.setLocation(pos.x + pan.x, pos.y + pan.y);
             }
         }
-        canvas.repaint();
     }
 
     private void installBarListeners() {
@@ -304,7 +316,18 @@ public class NetworkController {
         proxyBar.addParsingCodeListener(e -> {
             if (selectedProxyId == null) return;
             ProxyController pc = proxyControllers.get(selectedProxyId);
-            HttpParserPanel panel = new HttpParserPanel();
+            
+            // Find the top-level window containing this component
+            Window parentWindow = SwingUtilities.getWindowAncestor(view);
+            if (parentWindow == null) {
+                // Try to get window from the event source
+                Component source = (Component) e.getSource();
+                parentWindow = SwingUtilities.getWindowAncestor(source);
+            }
+            
+            HttpParserPanel panel = new HttpParserPanel(parentWindow);
+            // Set the current client request from the network panel
+            panel.setInitialRequest(reqEditor.getBytes());
             this.parserController = new HttpParserController(
                     pc.getModel(),
                     panel,
@@ -327,12 +350,38 @@ public class NetworkController {
             public void removeUpdate(DocumentEvent e) { update(); }
             public void changedUpdate(DocumentEvent e) { update(); }
         });
+        
+        proxyBar.addExportListener(e -> {
+            if (selectedProxyId == null) return;
+            ProxyController pc = proxyControllers.get(selectedProxyId);
+            
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Export Proxy Configuration");
+            fileChooser.setSelectedFile(new java.io.File(pc.getDomainName() + "_proxy.json"));
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("JSON Files", "json"));
+            
+            if (fileChooser.showSaveDialog(view) == JFileChooser.APPROVE_OPTION) {
+                java.io.File file = fileChooser.getSelectedFile();
+                if (!file.getName().endsWith(".json")) {
+                    file = new java.io.File(file.getAbsolutePath() + ".json");
+                }
+                
+                try {
+                    ProxyExporter.exportProxy(pc.getModel(), file);
+                    JOptionPane.showMessageDialog(view, "Proxy configuration exported successfully!", 
+                        "Export Success", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(view, "Error exporting proxy: " + ex.getMessage(), 
+                        "Export Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
     }
 
     private void showParserInStreams(String proxyId, boolean show){
+        model.getProxy(proxyId).setShowParser(show);
+        proxyControllers.get(proxyId).setEnabledProxy(show);
         for (StreamController streamController : streamControllers){
-            model.getProxy(proxyId).setShowParser(show);
-            proxyControllers.get(proxyId).setEnabledProxy(show);
             streamController.resetView();
         }
     }
@@ -344,8 +393,7 @@ public class NetworkController {
         for (MouseListener l : oldML) pv.removeMouseListener(l);
         for (MouseMotionListener l : oldMML) pv.removeMouseMotionListener(l);
 
-        final Timer[] singleClickTimer = {new Timer(200, null)};
-        singleClickTimer[0].setRepeats(false);
+        final Timer[] singleClickTimer = {null};
 
         controller.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
@@ -366,38 +414,22 @@ public class NetworkController {
             }
             public void mouseClicked(MouseEvent e) {
                 if (!SwingUtilities.isLeftMouseButton(e)) return;
-                if (e.getClickCount() == 2) {
-                    if (singleClickTimer[0].isRunning()) singleClickTimer[0].stop();
-                    // Double-click logic
-                    proxyControllers.get(pv.getId()).setEnabledProxy(!proxyControllers.get(pv.getId()).isShowParserEnabled());
-                    if (pv.getId().equals(selectedProxyId)) proxyBar.setShowInStreamsEnabled(proxyControllers.get(pv.getId()).isShowParserEnabled());
-                    showParserInStreams(pv.getId(), proxyControllers.get(pv.getId()).isShowParserEnabled());
-                } else if (e.getClickCount() == 1) {
-                    singleClickTimer[0].stop();
-                    singleClickTimer[0] = new Timer(200, evt -> {
-                        // Single-click logic goes here (previously in your single click section)
-                        if (isConnecting && connectStartProxy != null && pv != connectStartProxy) {
-                            model.addConnection(connectStartProxy.getId(), pv.getId());
-                            reloadAll(false);
-                            isConnecting = false;
-                            connectStartProxy = null;
-                            canvas.setConnectStartProxy(null);
-                            canvas.setMousePoint(null);
-                            if (selectedProxyId != null) {
-                                selectProxy(selectedProxyId);
-                            }
-                            return;
-                        }
-                        if (!isConnecting && !pv.isClient()) {
-                            if (pv.getId().equals(selectedProxyId)) {
-                                unselectProxy();
-                            } else {
-                                selectProxy(pv.getId());
-                            }
-                        }
-                    });
-                    singleClickTimer[0].setRepeats(false);
-                    singleClickTimer[0].start();
+                if (isConnecting && connectStartProxy != null && pv != connectStartProxy) {
+                    model.addConnection(connectStartProxy.getId(), pv.getId());
+                    canvas.addConnectionView(new ConnectionLine(connectStartProxy, pv));
+                    isConnecting = false;
+                    connectStartProxy = null;
+                    canvas.setConnectStartProxy(null);
+                    canvas.setMousePoint(null);
+                    return;
+                }
+                
+                if (!isConnecting && !pv.isClient()) {
+                    if (pv.getId().equals(selectedProxyId)) {
+                        unselectProxy();
+                    } else {
+                        selectProxy(pv.getId());
+                    }
                 }
             }
         });
@@ -411,7 +443,7 @@ public class NetworkController {
                             new Point(nx - pan.x, ny - pan.y)
                     );
                     draggingProxy.setLocation(nx, ny);
-                    canvas.repaint();
+                    canvas.scheduleRepaint();
                 }
             }
         });
@@ -448,7 +480,6 @@ public class NetworkController {
                 connectStartProxy = null;
                 canvas.setConnectStartProxy(null);
                 canvas.setMousePoint(null);
-                canvas.repaint();
             }
             if (!(c instanceof ProxyComponent)) {
                 unselectProxy();
@@ -467,7 +498,6 @@ public class NetworkController {
             }
             if (isConnecting && connectStartProxy != null) {
                 canvas.setMousePoint(e.getPoint());
-                canvas.repaint();
             }
         }
         public void mouseMoved(MouseEvent e) {
@@ -475,7 +505,6 @@ public class NetworkController {
             canvas.setHighlightedConnection(nearest);
             if (isConnecting && connectStartProxy != null) {
                 canvas.setMousePoint(e.getPoint());
-                canvas.repaint();
             }
         }
     };
@@ -500,52 +529,100 @@ public class NetworkController {
             proxyBar.setShowInStreamsEnabled(false);
         }
 
-        // DO NOT recreate reqEditor! Only recreate parsedRequestPanel
-        HttpMultiEditorPanel parsedRequestPanel = new HttpMultiEditorPanel(
-                "Parsed Request",
-                HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY)
-        );
-        parsedRequestPanel.addAll(new ArrayList<>());
-
-        StreamComboBox<byte[]> streamsBox = new StreamComboBox<>("Request from Stream");
-        streamsBox.addItem(new ComboItem<>("Base Req", ("GET / HTTP/1.1\r\nHost: " + proxyBar.getDomainName() + "\r\nContent-Length: 10\r\n\r\n0123456789").getBytes()));
-        for (StreamController sc : streamControllers) {
-            streamsBox.addItem(new ComboItem<>(sc.getName(), sc.getRequest()));
+        // Initialize UI components only once
+        if (cachedParsedRequestPanel == null) {
+            cachedParsedRequestPanel = new HttpMultiEditorPanel(
+                    "Parsed Request",
+                    HTTPRaiderExtension.API.userInterface().createHttpRequestEditor(EditorOptions.READ_ONLY)
+            );
         }
-        streamsBox.setSelectedIndex(selectedReqId);
+        
+        if (cachedStreamsBox == null) {
+            cachedStreamsBox = new StreamComboBox<>("Request from Stream");
+            
+            // Set up the combo box listener only once
+            reqEditor.setComponent(cachedStreamsBox, e -> {
+                selectedReqId = cachedStreamsBox.getSelectedIndex();
+                reqEditor.setBytes(cachedStreamsBox.getSelectedValue());
 
-        // Only update reqEditor content if user picks a new stream
-        reqEditor.setComponent(streamsBox, e -> {
-            selectedReqId = streamsBox.getSelectedIndex();
-            reqEditor.setBytes(streamsBox.getSelectedValue());
+                if (selectedProxyId != null) {
+                    ProxyController controller = proxyControllers.get(selectedProxyId);
+                    if (controller != null) {
+                        List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
+                                controller.getModel(),
+                                reqEditor.getBytes(),
+                                this
+                        );
+                        cachedParsedRequestPanel.addAll(panelGroups);
+                    }
+                }
+            });
+        }
+        
+        // Refresh combo box items without triggering selection change
+        boolean isFirstTime = cachedStreamsBox.getComboBox().getItemCount() == 0;
+        
+        // Store current editor content before updating combo box
+        byte[] currentContent = reqEditor.getBytes();
+        
+        // Temporarily remove listeners to prevent triggering during update
+        ActionListener[] listeners = cachedStreamsBox.getComboBox().getActionListeners();
+        for (ActionListener l : listeners) {
+            cachedStreamsBox.getComboBox().removeActionListener(l);
+        }
+        
+        cachedStreamsBox.getComboBox().removeAllItems();
+        String domainName = proxyBar.getDomainName();
+        if (domainName == null) domainName = "localhost";
+        cachedStreamsBox.addItem(new ComboItem<>("Base Req", ("GET / HTTP/1.1\r\nHost: " + domainName + "\r\nContent-Length: 10\r\n\r\n0123456789").getBytes()));
+        for (StreamController sc : streamControllers) {
+            cachedStreamsBox.addItem(new ComboItem<>(sc.getName(), sc.getRequest()));
+        }
+        cachedStreamsBox.setSelectedIndex(selectedReqId);
+        
+        // Re-add listeners
+        for (ActionListener l : listeners) {
+            cachedStreamsBox.getComboBox().addActionListener(l);
+        }
+        
+        // Restore editor content if it existed, or set initial content if first time
+        if (isFirstTime || currentContent == null || currentContent.length == 0) {
+            reqEditor.setBytes(cachedStreamsBox.getSelectedValue());
+        } else {
+            reqEditor.setBytes(currentContent);
+        }
+        
+        // Clear parsed results
+        cachedParsedRequestPanel.addAll(new ArrayList<>());
 
-            List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
-                    proxyControllers.get(selectedProxyId).getModel(),
-                    reqEditor.getBytes(),
-                    this
-            );
-            parsedRequestPanel.addAll(panelGroups);
+        cachedParsedRequestPanel.getEditorPanel().setComponent(new ActionButton("Test"), e -> {
+            if (selectedProxyId != null) {
+                ProxyController controller = proxyControllers.get(selectedProxyId);
+                if (controller != null) {
+                    List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
+                            controller.getModel(),
+                            reqEditor.getBytes(),
+                            this
+                    );
+                    cachedParsedRequestPanel.addAll(panelGroups);
+                }
+            }
         });
 
-        parsedRequestPanel.getEditorPanel().setComponent(new ActionButton("Test"), e -> {
-            List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
-                    proxyControllers.get(selectedProxyId).getModel(),
-                    reqEditor.getBytes(),
-                    this
-            );
-            parsedRequestPanel.addAll(panelGroups);
-        });
+        view.showHttpEditors(reqEditor, cachedParsedRequestPanel);
+        view.resetSplitPanes();
 
-        // Always show the persistent reqEditor (never recreate), but recreate parsedRequestPanel
-        view.showHttpEditors(reqEditor, parsedRequestPanel);
-
-// Immediately run the test logic to update the parsed results
-        List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
-                proxyControllers.get(selectedProxyId).getModel(),
-                reqEditor.getBytes(),
-                this
-        );
-        parsedRequestPanel.addAll(panelGroups);
+        if (selectedProxyId != null) {
+            ProxyController controller = proxyControllers.get(selectedProxyId);
+            if (controller != null) {
+                List<List<byte[]>> panelGroups = ParserChainRunner.parseFinalGroupsForPanel(
+                        controller.getModel(),
+                        reqEditor.getBytes(),
+                        this
+                );
+                cachedParsedRequestPanel.addAll(panelGroups);
+            }
+        }
     }
 
 
@@ -608,9 +685,10 @@ public class NetworkController {
         while (parent.containsKey(curr)) {
             String prev = parent.get(curr);
             if (prev.equals(clientId)) break;
-            path.add(0, model.getProxy(prev));
+            path.add(model.getProxy(prev));
             curr = prev;
         }
+        Collections.reverse(path);
         return path;
     }
 
@@ -630,6 +708,41 @@ public class NetworkController {
     private void updateProxyBarVisibility() {
         view.setProxyBarVisible(selectedProxyId != null);
     }
+    
+    private Point findFreePosition() {
+        // Find a free position that doesn't overlap with existing proxies
+        int baseX = 350;
+        int baseY = 250;
+        int offsetX = 150;
+        int offsetY = 100;
+        
+        Set<Point> occupiedPositions = new HashSet<>(positions.values());
+        
+        // Try different positions in a grid pattern
+        for (int row = 0; row < 10; row++) {
+            for (int col = 0; col < 10; col++) {
+                Point candidate = new Point(baseX + col * offsetX, baseY + row * offsetY);
+                boolean isFree = true;
+                
+                // Check if this position is too close to any existing proxy
+                for (Point occupied : occupiedPositions) {
+                    if (Math.abs(candidate.x - occupied.x) < 100 && 
+                        Math.abs(candidate.y - occupied.y) < 80) {
+                        isFree = false;
+                        break;
+                    }
+                }
+                
+                if (isFree) {
+                    return candidate;
+                }
+            }
+        }
+        
+        // If no free position found, use a random offset
+        return new Point(baseX + (int)(Math.random() * 500), 
+                        baseY + (int)(Math.random() * 400));
+    }
 
     private void showConnectionMenu(ConnectionLine cv, int x, int y) {
         JPopupMenu menu = new JPopupMenu();
@@ -639,7 +752,7 @@ public class NetworkController {
                     cv.getFrom().getId(), cv.getTo().getId()
             );
             model.removeConnection(cm.getFromId(), cm.getToId());
-            reloadAll(false);
+            canvas.removeConnectionView(cv);
             if (selectedProxyId != null){
                 selectProxy(selectedProxyId);
             }
@@ -653,14 +766,21 @@ public class NetworkController {
         if (!pv.isClient()) {
             JMenuItem del = new JMenuItem("Delete");
             del.addActionListener(e -> {
-                model.removeProxy(pv.getId());
-                positions.remove(pv.getId());
-                proxyControllers.remove(pv.getId());
-                if (selectedProxyId.equals(pv.getId())) unselectProxy();
+                String proxyId = pv.getId();
+                
+                if (selectedProxyId != null && selectedProxyId.equals(proxyId)) {
+                    unselectProxy();
+                }
+                
+                model.removeProxy(proxyId);
+                positions.remove(proxyId);
+                proxyControllers.remove(proxyId);
+                
+                reloadAll(false);
+                
                 for (StreamController streamController : streamControllers){
                     streamController.resetView();
                 }
-                reloadAll(false);
             });
             menu.add(del);
         }
@@ -688,14 +808,61 @@ public class NetworkController {
             );
             model.addProxy(proxy);
             ProxyComponent proxyComponent = new ProxyComponent(proxy.getId(), proxy.isClient(), proxy.isShowParser());
-            proxyControllers.put(proxy.getId(), new ProxyController(proxy, proxyComponent));
-            positions.put(
-                    proxy.getId(),
-                    new Point(x - pan.x, y - pan.y)
-            );
-            reloadAll(false);
+            ProxyController pc = new ProxyController(proxy, proxyComponent);
+            proxyControllers.put(proxy.getId(), pc);
+            
+            Point pos = new Point(x - pan.x, y - pan.y);
+            positions.put(proxy.getId(), pos);
+            proxyComponent.setSize(ICON_WIDTH, ICON_HEIGHT);
+            Point displayPos = new Point(pos.x + pan.x, pos.y + pan.y);
+            proxyComponent.setLocation(displayPos.x, displayPos.y);
+            canvas.addProxyView(proxy.getId(), proxyComponent, displayPos);
+            installProxyListeners(pc);
+            updateProxyBarVisibility();
         });
         menu.add(addProxy);
+        
+        JMenuItem importProxy = new JMenuItem("Import Proxy");
+        importProxy.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setDialogTitle("Import Proxy Configuration");
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("JSON Files", "json"));
+            
+            if (fileChooser.showOpenDialog(view) == JFileChooser.APPROVE_OPTION) {
+                java.io.File file = fileChooser.getSelectedFile();
+                
+                try {
+                    ProxyModel importedProxy = ProxyExporter.importProxy(file);
+                    
+                    // Add the imported proxy to the network at the menu location
+                    Point pos = new Point(x - pan.x, y - pan.y);
+                    model.addProxy(importedProxy);
+                    
+                    ProxyComponent proxyComponent = new ProxyComponent(importedProxy.getId(), importedProxy.isClient(), importedProxy.isShowParser());
+                    ProxyController pc = new ProxyController(importedProxy, proxyComponent);
+                    proxyControllers.put(importedProxy.getId(), pc);
+                    
+                    // Store position and set component location
+                    positions.put(importedProxy.getId(), pos);
+                    proxyComponent.setSize(ICON_WIDTH, ICON_HEIGHT);
+                    Point displayPos = new Point(pos.x + pan.x, pos.y + pan.y);
+                    proxyComponent.setLocation(displayPos.x, displayPos.y);
+                    
+                    canvas.addProxyView(importedProxy.getId(), proxyComponent, displayPos);
+                    installProxyListeners(pc);
+                    
+                    // Select the newly imported proxy
+                    selectProxy(importedProxy.getId());
+                    
+                    JOptionPane.showMessageDialog(view, "Proxy configuration imported successfully!", 
+                        "Import Success", JOptionPane.INFORMATION_MESSAGE);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(view, "Error importing proxy: " + ex.getMessage(), 
+                        "Import Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+        menu.add(importProxy);
         menu.show(canvas, x, y);
     }
 
@@ -761,6 +928,30 @@ public class NetworkController {
     }
 
     public void save() {}
+
+    public void addConnectionQuick(String fromId, String toId) {
+        model.addConnection(fromId, toId);
+        ProxyComponent from = canvas.getProxyView(fromId);
+        ProxyComponent to = canvas.getProxyView(toId);
+        if (from != null && to != null) {
+            canvas.addConnectionView(new ConnectionLine(from, to));
+        }
+    }
+    
+    public void addProxyQuick(ProxyModel proxy) {
+        model.addProxy(proxy);
+        ProxyComponent proxyComponent = new ProxyComponent(proxy.getId(), proxy.isClient(), proxy.isShowParser());
+        ProxyController pc = new ProxyController(proxy, proxyComponent);
+        proxyControllers.put(proxy.getId(), pc);
+        
+        Point pos = new Point(350, 250);
+        positions.put(proxy.getId(), pos);
+        proxyComponent.setSize(ICON_WIDTH, ICON_HEIGHT);
+        Point displayPos = new Point(pos.x + pan.x, pos.y + pan.y);
+        proxyComponent.setLocation(displayPos.x, displayPos.y);
+        canvas.addProxyView(proxy.getId(), proxyComponent, displayPos);
+        installProxyListeners(pc);
+    }
 
     public void load() {
         reloadAll(true);

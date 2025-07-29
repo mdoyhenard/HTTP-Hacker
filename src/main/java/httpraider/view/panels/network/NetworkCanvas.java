@@ -18,6 +18,8 @@ public class NetworkCanvas extends JPanel {
     private Point mousePoint;
     private ConnectionLine highlightedConnection;
     private Point pan = new Point(0, 0);
+    private final javax.swing.Timer repaintTimer;
+    private static final BasicStroke CONNECTING_STROKE = new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0, new float[]{6, 6}, 0);
 
     public NetworkCanvas() {
         super(null);
@@ -25,6 +27,10 @@ public class NetworkCanvas extends JPanel {
         connectionLines = new ArrayList<>();
         setBackground(new Color(252, 252, 255, 255));
         setFocusable(true);
+        setDoubleBuffered(true);
+        setOpaque(true);
+        repaintTimer = new javax.swing.Timer(8, e -> super.repaint());
+        repaintTimer.setRepeats(false);
     }
 
     public void addCanvasMouseListener(MouseListener l) {
@@ -67,13 +73,19 @@ public class NetworkCanvas extends JPanel {
         if (highlightedConnection != null) {
             highlightedConnection.setHighlighted(true);
         }
-        repaint();
+        scheduleRepaint();
+    }
+
+    public void scheduleRepaint() {
+        if (!repaintTimer.isRunning()) {
+            repaintTimer.start();
+        }
     }
 
 
     public void setPan(Point pan) {
         this.pan = pan;
-        repaint();
+        scheduleRepaint();
     }
 
     public Point getPan() {
@@ -84,14 +96,14 @@ public class NetworkCanvas extends JPanel {
         proxyViews.put(id, pv);
         pv.setLocation(location);
         add(pv);
-        repaint();
+        scheduleRepaint();
     }
 
     public void removeProxyView(String id) {
         ProxyComponent pv = proxyViews.remove(id);
         if (pv != null) {
             remove(pv);
-            repaint();
+            scheduleRepaint();
         }
     }
 
@@ -105,12 +117,12 @@ public class NetworkCanvas extends JPanel {
 
     public void addConnectionView(ConnectionLine cv) {
         connectionLines.add(cv);
-        repaint();
+        scheduleRepaint();
     }
 
     public void removeConnectionView(ConnectionLine cv) {
         connectionLines.remove(cv);
-        repaint();
+        scheduleRepaint();
     }
 
     public List<ConnectionLine> getConnectionViews() {
@@ -119,7 +131,7 @@ public class NetworkCanvas extends JPanel {
 
     public void setConnectStartProxy(ProxyComponent pv) {
         connectStartProxy = pv;
-        repaint();
+        scheduleRepaint();
     }
 
     public ProxyComponent getConnectStartProxy() {
@@ -128,7 +140,7 @@ public class NetworkCanvas extends JPanel {
 
     public void setMousePoint(Point p) {
         mousePoint = p;
-        repaint();
+        scheduleRepaint();
     }
 
     public Point getMousePoint() {
@@ -140,13 +152,16 @@ public class NetworkCanvas extends JPanel {
         proxyViews.clear();
         connectionLines.clear();
         highlightedConnection = null;
-        repaint();
+        scheduleRepaint();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
+        
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
 
         for (ConnectionLine cv : connectionLines) {
             cv.paintLine(g2);
@@ -154,7 +169,7 @@ public class NetworkCanvas extends JPanel {
 
         if (connectStartProxy != null && mousePoint != null) {
             Point from = connectStartProxy.getCenter();
-            g2.setStroke(new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0, new float[]{6, 6}, 0));
+            g2.setStroke(CONNECTING_STROKE);
             g2.setColor(Color.GRAY);
             g2.drawLine(from.x, from.y, mousePoint.x, mousePoint.y);
         }

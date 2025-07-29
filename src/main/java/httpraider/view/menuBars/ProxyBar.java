@@ -1,5 +1,7 @@
 package httpraider.view.menuBars;
 
+import httpraider.view.components.SwitchButton;
+
 import javax.swing.*;
 import javax.swing.border.MatteBorder;
 import javax.swing.event.DocumentListener;
@@ -10,7 +12,8 @@ public class ProxyBar extends JPanel {
     private final JTextField domainNameField;
     private final JTextArea descriptionArea;
     private final JButton parsingButton;
-    private final JToggleButton showInStreamsToggle;
+    private final SwitchButton showInStreamsToggle;
+    private final JButton exportButton;
 
     public ProxyBar() {
         super(new BorderLayout());
@@ -53,14 +56,24 @@ public class ProxyBar extends JPanel {
         parsingButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(parsingButton);
 
-        content.add(Box.createVerticalStrut(5));
+        content.add(Box.createVerticalStrut(20)); // Increased gap for visual separation
 
         // Toggle
-        showInStreamsToggle = new JToggleButton("Show in streams");
+        showInStreamsToggle = new SwitchButton("Show in streams");
         showInStreamsToggle.setAlignmentX(Component.CENTER_ALIGNMENT);
         content.add(showInStreamsToggle);
 
         add(content, BorderLayout.NORTH);
+        
+        // Export panel at the bottom
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 5));
+        bottomPanel.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 10));
+        
+        exportButton = new JButton("Export Proxy");
+        
+        bottomPanel.add(exportButton);
+        
+        add(bottomPanel, BorderLayout.SOUTH);
     }
 
     // getters & setters
@@ -104,5 +117,9 @@ public class ProxyBar extends JPanel {
 
     public void addShowInStreamsListener(ActionListener l) {
         showInStreamsToggle.addActionListener(l);
+    }
+    
+    public void addExportListener(ActionListener l) {
+        exportButton.addActionListener(l);
     }
 }

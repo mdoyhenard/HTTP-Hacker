@@ -6,6 +6,7 @@ import httpraider.controller.NetworkController;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ParserChainRunner {
 
@@ -31,10 +32,22 @@ public class ParserChainRunner {
 
         for (int i = 0; i < chain.size(); i++) {
             ProxyModel proxy = chain.get(i);
-            ProxyModel nextProxy = (i + 1 < chain.size()) ? chain.get(i + 1) : currentProxy;
+            
+            // Get all forward connections for this proxy (excluding client)
+            List<ProxyModel> forwardConnections = networkController.getDirectConnections(proxy.getId())
+                .stream()
+                .filter(p -> !p.isClient())
+                .collect(Collectors.toList());
+            
+            // Remove connections that lead back towards client (to avoid loops)
+            if (i > 0) {
+                ProxyModel previousProxy = chain.get(i - 1);
+                forwardConnections.removeIf(p -> p.getId().equals(previousProxy.getId()));
+            }
+            
             List<LoadBalancingRule> rules = proxy.getParserSettings().getLoadBalancingRules();
-
-            // Only consider enabled rules for this proxy
+            
+            // Check if there are enabled rules
             boolean hasEnabledRules = false;
             if (rules != null) {
                 for (LoadBalancingRule rule : rules) {
@@ -49,17 +62,22 @@ public class ParserChainRunner {
             for (byte[] data : currentGroup) {
                 List<byte[]> validRequests = parseValidRequestsForProxyRaw(proxy.getParserSettings(), data);
 
-                if (!hasEnabledRules) {
-                    // No rules or all rules disabled: forward everything
+                if (forwardConnections.size() == 1 && !hasEnabledRules) {
+                    // Single forward connection and no rules: forward everything to that connection
                     nextGroup.addAll(validRequests);
-                } else {
+                } else if (forwardConnections.size() > 1 || hasEnabledRules) {
+                    // Multiple connections or has rules: use rules to determine forwarding
                     for (byte[] req : validRequests) {
-                        // Make sure matchesForwardingRule compares against nextProxy.getId() (proxy ID, not name)
-                        if (matchesForwardingRule(rules, req, nextProxy.getId())) {
-                            nextGroup.add(req);
+                        // Check rules against all possible forward connections
+                        for (ProxyModel forwardProxy : forwardConnections) {
+                            if (!hasEnabledRules || matchesForwardingRule(rules, req, forwardProxy.getId())) {
+                                nextGroup.add(req);
+                                break; // Forward to first matching proxy only
+                            }
                         }
                     }
                 }
+                // If forwardConnections.size() == 0, nothing is forwarded (dead end)
             }
             currentGroup = nextGroup;
         }
@@ -301,6 +319,30 @@ public class ParserChainRunner {
 
             byte[] afterBody = lenResult.getRemaining();
 
+            // Check firewall rules before adding the request
+            FirewallCheckResult firewallResult = checkFirewallRules(model, rawRequest, afterJsHeaderLines, afterJsBody);
+            if (firewallResult.blocked) {
+                // Add the blocked request with WAF tags
+                String wafTag = "<WAF_RULE: the request was not forwarded as it hit a rule for \"" + 
+                               firewallResult.triggeredSource + "\">";
+                if (firewallResult.closeConnection) {
+                    wafTag += "<CONNECTION_CLOSED_BY_WAF>";
+                }
+                results.add(concat(rawRequest, wafTag.getBytes(StandardCharsets.ISO_8859_1)));
+                
+                // If connection should be closed, stop processing further requests
+                if (firewallResult.closeConnection) {
+                    break;
+                }
+                // Continue processing next request if connection not closed
+                remaining = afterBody;
+                if (remaining.length > 0) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
             boolean incomplete = false;
             if (headersBytes.length == 0 || headerErr != null) {
                 incomplete = true;
@@ -502,6 +544,23 @@ public class ParserChainRunner {
 
             byte[] afterBody = lenResult.getRemaining();
 
+            // Check firewall rules before adding the request
+            FirewallCheckResult firewallResult = checkFirewallRules(model, rawRequest, afterJsHeaderLines, afterJsBody);
+            if (firewallResult.blocked) {
+                // Don't add blocked requests to valid list
+                if (firewallResult.closeConnection) {
+                    // Stop processing if connection should be closed
+                    break;
+                }
+                // Continue with next request
+                remaining = afterBody;
+                if (remaining.length > 0) {
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
             boolean incomplete = false;
             if (headersBytes.length == 0 || headerErr != null) {
                 incomplete = true;
@@ -575,6 +634,110 @@ public class ParserChainRunner {
         System.arraycopy(a, 0, result, 0, a.length);
         System.arraycopy(b, 0, result, a.length, b.length);
         return result;
+    }
+    
+    private static class FirewallCheckResult {
+        boolean blocked = false;
+        boolean closeConnection = false;
+        String triggeredSource = "";
+    }
+    
+    private static FirewallCheckResult checkFirewallRules(HttpParserModel model, byte[] rawRequest, 
+                                                         List<String> headerLines, byte[] body) {
+        FirewallCheckResult result = new FirewallCheckResult();
+        
+        List<FirewallRule> rules = model.getFirewallRules();
+        if (rules == null || rules.isEmpty()) {
+            return result;
+        }
+        
+        String requestStr = new String(rawRequest, StandardCharsets.ISO_8859_1);
+        
+        for (FirewallRule rule : rules) {
+            if (!rule.isEnabled()) continue;
+            
+            String inputValue = null;
+            switch (rule.getSource()) {
+                case METHOD:
+                    if (!headerLines.isEmpty()) {
+                        String requestLine = headerLines.get(0);
+                        String[] parts = requestLine.split(" ");
+                        if (parts.length > 0) {
+                            inputValue = parts[0];
+                        }
+                    }
+                    break;
+                    
+                case URL:
+                    if (!headerLines.isEmpty()) {
+                        String requestLine = headerLines.get(0);
+                        String[] parts = requestLine.split(" ");
+                        if (parts.length > 1) {
+                            inputValue = parts[1];
+                        }
+                    }
+                    break;
+                    
+                case VERSION:
+                    if (!headerLines.isEmpty()) {
+                        String requestLine = headerLines.get(0);
+                        String[] parts = requestLine.split(" ");
+                        if (parts.length > 2) {
+                            // Get the version part (last part before line ending)
+                            String lastPart = parts[parts.length - 1];
+                            // Remove any line endings
+                            inputValue = lastPart.replaceAll("\\r|\\n", "");
+                        }
+                    }
+                    break;
+                    
+                case HEADERS:
+                    // Pass headers as array (excluding request line)
+                    if (headerLines.size() > 1) {
+                        List<String> headers = new ArrayList<>(headerLines.subList(1, headerLines.size()));
+                        // Clean up line endings from headers
+                        for (int i = 0; i < headers.size(); i++) {
+                            headers.set(i, headers.get(i).replaceAll("\\r|\\n", ""));
+                        }
+                        // Evaluate with headers array
+                        boolean blocked = evaluateFirewallRuleArray(rule.getJsCode(), headers);
+                        if (blocked) {
+                            result.blocked = true;
+                            result.closeConnection = rule.isCloseConnection();
+                            result.triggeredSource = rule.getSource().getDisplayName();
+                            return result;
+                        }
+                        continue; // Skip the string evaluation below
+                    }
+                    break;
+                    
+                case BODY:
+                    inputValue = new String(body, StandardCharsets.ISO_8859_1);
+                    break;
+                    
+                case FULL_REQUEST:
+                    inputValue = requestStr;
+                    break;
+            }
+            
+            if (inputValue != null && evaluateFirewallRule(rule.getJsCode(), inputValue)) {
+                result.blocked = true;
+                result.closeConnection = rule.isCloseConnection();
+                result.triggeredSource = rule.getSource().getDisplayName();
+                return result;
+            }
+        }
+        
+        return result;
+    }
+    
+    private static boolean evaluateFirewallRule(String jsCode, String input) {
+        return JSEngine.runFirewallRule(jsCode, input);
+    }
+    
+    private static boolean evaluateFirewallRuleArray(String jsCode, List<String> headers) {
+        String[] headersArray = headers.toArray(new String[0]);
+        return JSEngine.runFirewallRuleArray(jsCode, headersArray);
     }
 
     private static boolean matchesForwardingRule(List<LoadBalancingRule> rules, byte[] request, String targetProxyId) {

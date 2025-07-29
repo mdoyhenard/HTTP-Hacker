@@ -13,6 +13,8 @@ public class ProxyComponent extends JComponent {
     private boolean enabled;
     private static final Image clientImg;
     private static final Image proxyImg;
+    private static final BasicStroke ENABLED_STROKE = new BasicStroke(8);
+    private static final BasicStroke SELECTED_STROKE = new BasicStroke(6);
 
     static {
         ImageIcon c = null, p = null;
@@ -77,14 +79,14 @@ public class ProxyComponent extends JComponent {
         }
         if (enabled){
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setStroke(new BasicStroke(8));
+            g2.setStroke(ENABLED_STROKE);
             g2.setColor(new Color(35, 152, 54, 189));
             g2.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 14, 14);
             g2.dispose();
         }
         if (selected) {
             Graphics2D g2 = (Graphics2D) g.create();
-            g2.setStroke(new BasicStroke(6));
+            g2.setStroke(SELECTED_STROKE);
             g2.setColor(new Color(36, 132, 255, 210));
             g2.drawRoundRect(1, 1, getWidth()-3, getHeight()-3, 14, 14);
             g2.dispose();
