@@ -1,42 +1,46 @@
-.gradle
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-*.iws
+# ============================================
+# IntelliJ IDEA
+# ============================================
+.idea/
 *.iml
-*.ipr
+*.iws
 out/
-!**/src/main/**/out/
-!**/src/test/**/out/
 
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
+# ============================================
+# Gradle
+# ============================================
+.gradle/
+build/            # ⚠️ normalmente se ignora, pero lo dejo para que subas builds/ejecutables
+!build/libs/*.jar # explícitamente permitir JARs compilados
+!build/distributions/**
+!build/exe/**
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# ============================================
+# Java
+# ============================================
+*.class
+*.log
 
-### VS Code ###
-.vscode/
-
-### Mac OS ###
+# ============================================
+# OS temporaries
+# ============================================
 .DS_Store
+Thumbs.db
+
+# ============================================
+# Archivos sensibles (NO versionar nunca)
+# ============================================
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.der
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.pub
+secrets.*
+.env
+

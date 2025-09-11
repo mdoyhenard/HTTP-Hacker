@@ -1,16 +1,16 @@
-# Introducing HTTP Raider: Total control over HTTP connections
+# Introducing HTTP Hacker: Total control over HTTP connections
 
-HTTP Raider is a powerful Burp extension for advanced interaction with HTTP servers and proxies over persistent TCP/TLS connections. It gives you:
+HTTP Hacker is a powerful Burp extension for advanced interaction with HTTP servers and proxies over persistent TCP/TLS connections. It gives you:
 
 * Full control over HTTP connections.  
 * Complete visibility of HTTP messages, with no automatic parsing.  
 * Direct access to request and response queues.
 
-HTTP Raider also features a visual drag and drop interface and built-in testing framework, making it easier to model complex proxy behavior and explore network interactions.
+HTTP Hacker also features a visual drag and drop interface and built-in testing framework, making it easier to model complex proxy behavior and explore network interactions.
 
 # Sessions
 
-HTTP Raider organizes your work into sessions. Each session represents a network target, and is used to model and test its behavior over persistent HTTP connections (also known as streams).
+HTTP Hacker organizes your work into sessions. Each session represents a network target, and is used to model and test its behavior over persistent HTTP connections (also known as streams).
 
 Each session includes the following tabs:
 
@@ -25,7 +25,7 @@ Image 1: Top view of the extensionSession tabs are displayed on the top bar. The
 
 Stream tabs enable you to create persistent connections to a domain or IP address.  This enables you to interact with HTTP servers or proxies through TCP or TLS sockets.
 
-To send requests from Burp to a stream tab, right-click a request, then select **Extensions \> HTTP Raider**. You can choose to send the requests to a new session or select an existing session.
+To send requests from Burp to a stream tab, right-click a request, then select **Extensions \> HTTP Hacker**. You can choose to send the requests to a new session or select an existing session.
 
 ### Configuring connections
 
