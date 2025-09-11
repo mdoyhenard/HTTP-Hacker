@@ -216,10 +216,8 @@ public class HttpMultiEditorPanel extends JPanel {
         if (totalItems == 0) {
             httpEditorPanel.setBytes(new byte[0]);
             add(httpEditorPanel, BorderLayout.CENTER);
-        } else if (totalItems == 1) {
-            httpEditorPanel.setBytes(getSingleByteArray());
-            add(httpEditorPanel, BorderLayout.CENTER);
         } else {
+            // Always show list view with "All" option, even for single request
             // Add "All" row at the top
             listModel.addElement(new ListEntry(ListEntryType.ALL, null, -1, 0));
             // Add small divider row after "All"

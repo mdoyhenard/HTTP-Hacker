@@ -93,12 +93,12 @@ public class NetworkController {
 
         networkBar.setAutoLayoutActionListener(e -> reloadAll(true));
         networkBar.setDiscoverActionListener(e -> {
-            DiscoverNetworkPanel panel = new DiscoverNetworkPanel(HTTPRaiderExtension.API); // usá tu instancia real
-            JDialog dialog = new JDialog((Frame) null, "Site Map Domains and Requests", true); // true = modal
+            DiscoverNetworkPanel panel = new DiscoverNetworkPanel(HTTPRaiderExtension.API, this);
+            JDialog dialog = new JDialog((Frame) null, "Network Discovery", true);
             dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
             dialog.setContentPane(panel);
             dialog.setSize(800, 500);
-            dialog.setLocationRelativeTo(null); // centra en pantalla
+            dialog.setLocationRelativeTo(null);
             dialog.setVisible(true);
         });
         view.setProxyBarVisible(false);
@@ -954,6 +954,10 @@ public class NetworkController {
     }
 
     public void load() {
+        reloadAll(true);
+    }
+    
+    public void refreshView() {
         reloadAll(true);
     }
 

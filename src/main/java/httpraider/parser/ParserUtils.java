@@ -3,6 +3,7 @@ package httpraider.parser;
 import httpraider.controller.engines.JSEngine;
 import httpraider.model.network.HttpParserModel;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.regex.*;
@@ -60,6 +61,8 @@ public class ParserUtils {
         List<String> seqs = model.getHeaderLineEndings();
         int splitIndex = -1;
         byte[] foundSeq = null;
+        
+        // First try to find double line endings (header/body delimiter)
         for (int i = 0; i < seqs.size(); i++) {
             for (int j = 0; j < seqs.size(); j++) {
                 byte[] seq1 = decodeEscapedSequence(seqs.get(i));
@@ -74,6 +77,7 @@ public class ParserUtils {
                 }
             }
         }
+        
         if (splitIndex == -1 || foundSeq == null) {
             return new ParserResult(data, new byte[0], "Header/body delimiter not found");
         }
@@ -119,7 +123,7 @@ public class ParserUtils {
             String delimStr = decodeEscapedSequenceStr(delim);
             int idx = requestLine.indexOf(delimStr);
             while (idx >= 0) {
-                matches.add(new DelimiterMatch(idx, delimStr.length()));
+                matches.add(new DelimiterMatch(idx, delimStr.length(), delimStr));
                 idx = requestLine.indexOf(delimStr, idx + 1);
             }
         }
@@ -139,12 +143,14 @@ public class ParserUtils {
         String part1 = requestLine.substring(0, a);
         String part2 = requestLine.substring(a + first.length, b);
         String part3 = requestLine.substring(b + second.length);
-        return new String[] { part1, part2, part3 };
+        // Return parts and delimiters
+        return new String[] { part1, part2, part3, first.delimiter, second.delimiter };
     }
 
     private static class DelimiterMatch {
         int position, length;
-        DelimiterMatch(int p, int l) { position = p; length = l; }
+        String delimiter;
+        DelimiterMatch(int p, int l, String d) { position = p; length = l; delimiter = d; }
     }
 
     public static List<String> runHeaderLinesJs(HttpParserModel model, List<String> headerLines) {
@@ -180,56 +186,69 @@ public class ParserUtils {
                 headerMap.computeIfAbsent(name, k -> new ArrayList<>()).add(value);
             }
         }
-        int bodyLen = 0;
+        boolean isChunked = false;
+        int contentLength = -1;
         String error = null;
+        
+        // Check each rule against the headers
         for (HttpParserModel.BodyLenHeaderRule rule : rules) {
             String pattern = rule.getPattern();
             if (pattern == null || pattern.trim().isEmpty()) continue;
-            String headerName = pattern.replace(":", "").trim().toLowerCase();
-            if (headerMap.containsKey(headerName)) {
-                List<String> values = headerMap.get(headerName);
-                if (values.size() > 1) {
-                    switch (rule.getDuplicateHandling()) {
-                        case FIRST:
-                            try {
-                                bodyLen = Integer.parseInt(values.get(0));
-                            } catch (Exception e) {
-                                error = "Invalid value for header: " + headerName;
-                            }
-                            break;
-                        case LAST:
-                            try {
-                                bodyLen = Integer.parseInt(values.get(values.size() - 1));
-                            } catch (Exception e) {
-                                error = "Invalid value for header: " + headerName;
-                            }
-                            break;
-                        case ERROR:
-                            error = "Duplicate header: " + headerName;
-                            break;
+            
+            // Look for headers that match this pattern
+            for (String headerLine : headerLines) {
+                if (rule.isChunked()) {
+                    // For chunked headers: exact match
+                    if (headerLine.trim().equals(pattern.trim())) {
+                        isChunked = true;
+                        break;
                     }
                 } else {
-                    try {
-                        bodyLen = Integer.parseInt(values.get(0));
-                    } catch (Exception e) {
-                        error = "Invalid value for header: " + headerName;
+                    // For content-length headers: prefix match
+                    if (headerLine.startsWith(pattern)) {
+                        String valueStr = headerLine.substring(pattern.length()).trim();
+                        try {
+                            contentLength = Integer.parseInt(valueStr);
+                        } catch (NumberFormatException e) {
+                            error = "Invalid Content-Length value: " + valueStr;
+                        }
+                        break;
                     }
                 }
-                if (error != null) {
-                    return new MessageLengthHeaderResult(headerLines, new byte[0], body, error, 0, null);
-                }
-                if (bodyLen < 0) {
-                    return new MessageLengthHeaderResult(headerLines, new byte[0], body, "Body length is negative", 0, null);
-                }
-                if (bodyLen > body.length) {
-                    int missing = bodyLen - body.length;
-                    byte[] partial = Arrays.copyOfRange(body, 0, body.length);
-                    return new MessageLengthHeaderResult(headerLines, partial, new byte[0], null, missing, null);
-                }
-                byte[] reqBody = Arrays.copyOfRange(body, 0, bodyLen);
-                byte[] remaining = Arrays.copyOfRange(body, bodyLen, body.length);
-                return new MessageLengthHeaderResult(headerLines, reqBody, remaining, null, 0, null);
             }
+            
+            // If we found a match for this rule, stop checking other rules
+            if (isChunked || contentLength >= 0 || error != null) {
+                break;
+            }
+        }
+        
+        if (error != null) {
+            return new MessageLengthHeaderResult(headerLines, new byte[0], body, error, 0, null);
+        }
+        
+        // Handle chunked encoding
+        if (isChunked) {
+            // Basic chunked encoding parsing
+            ChunkedParseResult chunkedResult = parseChunkedBody(body, model.getChunkedLineEndings());
+            byte[] decodedBody = chunkedResult.decodedBody;
+            byte[] remaining = new byte[body.length - chunkedResult.bytesConsumed];
+            System.arraycopy(body, chunkedResult.bytesConsumed, remaining, 0, remaining.length);
+            
+            // Return decoded body and remaining bytes without setting chunkedIncompleteTag
+            return new MessageLengthHeaderResult(headerLines, decodedBody, remaining, null, 0, null);
+        }
+        
+        // Handle Content-Length
+        if (contentLength >= 0) {
+            if (contentLength > body.length) {
+                int missing = contentLength - body.length;
+                byte[] partial = Arrays.copyOfRange(body, 0, body.length);
+                return new MessageLengthHeaderResult(headerLines, partial, new byte[0], null, missing, null);
+            }
+            byte[] reqBody = Arrays.copyOfRange(body, 0, contentLength);
+            byte[] remaining = Arrays.copyOfRange(body, contentLength, body.length);
+            return new MessageLengthHeaderResult(headerLines, reqBody, remaining, null, 0, null);
         }
         // No relevant header found, treat as Content-Length 0
         return new MessageLengthHeaderResult(headerLines, new byte[0], body, null, 0, null);
@@ -263,5 +282,89 @@ public class ParserUtils {
         StringBuilder sb = new StringBuilder();
         for (String s : strings) sb.append(s);
         return sb.toString().getBytes(StandardCharsets.ISO_8859_1);
+    }
+    
+    private static class ChunkedParseResult {
+        final byte[] decodedBody;
+        final int bytesConsumed;
+        
+        ChunkedParseResult(byte[] decodedBody, int bytesConsumed) {
+            this.decodedBody = decodedBody;
+            this.bytesConsumed = bytesConsumed;
+        }
+    }
+    
+    private static ChunkedParseResult parseChunkedBody(byte[] body, List<String> lineEndings) {
+        if (body == null || body.length == 0) return new ChunkedParseResult(new byte[0], 0);
+        
+        // Use default line ending if none specified
+        byte[] lineEnding = (lineEndings != null && !lineEndings.isEmpty()) 
+            ? decodeEscapedSequence(lineEndings.get(0)) 
+            : new byte[]{'\r', '\n'};
+        
+        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        int pos = 0;
+        
+        while (pos < body.length) {
+            // Find chunk size line
+            int lineEnd = indexOf(body, lineEnding, pos);
+            if (lineEnd == -1) {
+                // No line ending found - return what we have so far
+                return new ChunkedParseResult(result.toByteArray(), pos);
+            }
+            
+            String sizeLine = new String(body, pos, lineEnd - pos, StandardCharsets.ISO_8859_1);
+            pos = lineEnd + lineEnding.length;
+            
+            // Parse chunk size (hex) - handle extensions after semicolon
+            int chunkSize;
+            try {
+                String sizeStr = sizeLine.trim();
+                // Remove chunk extensions (everything after semicolon)
+                int semicolonIdx = sizeStr.indexOf(';');
+                if (semicolonIdx >= 0) {
+                    sizeStr = sizeStr.substring(0, semicolonIdx).trim();
+                }
+                chunkSize = Integer.parseInt(sizeStr, 16);
+            } catch (NumberFormatException e) {
+                // Invalid chunk size - return what we have so far
+                return new ChunkedParseResult(result.toByteArray(), pos);
+            }
+            
+            // Last chunk (size 0)
+            if (chunkSize == 0) {
+                // Skip any trailer headers until we find empty line
+                int trailerEnd = pos;
+                while (trailerEnd + lineEnding.length <= body.length) {
+                    int nextLineEnd = indexOf(body, lineEnding, trailerEnd);
+                    if (nextLineEnd == -1) break;
+                    
+                    // Check if this is an empty line
+                    if (nextLineEnd == trailerEnd) {
+                        // Found empty line, skip past it
+                        pos = trailerEnd + lineEnding.length;
+                        break;
+                    }
+                    trailerEnd = nextLineEnd + lineEnding.length;
+                }
+                break;
+            }
+            
+            // Check if we have enough data for this chunk
+            if (pos + chunkSize > body.length) {
+                // Not enough data - return what we have so far
+                return new ChunkedParseResult(result.toByteArray(), pos);
+            }
+            
+            result.write(body, pos, chunkSize);
+            pos += chunkSize;
+            
+            // Skip trailing CRLF after chunk data if present
+            if (pos + lineEnding.length <= body.length) {
+                pos += lineEnding.length;
+            }
+        }
+        
+        return new ChunkedParseResult(result.toByteArray(), pos);
     }
 }

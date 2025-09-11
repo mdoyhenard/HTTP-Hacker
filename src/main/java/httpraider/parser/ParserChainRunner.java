@@ -4,6 +4,7 @@ import httpraider.controller.engines.JSEngine;
 import httpraider.model.network.*;
 import httpraider.controller.NetworkController;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -11,10 +12,18 @@ import java.util.stream.Collectors;
 public class ParserChainRunner {
 
     public static List<List<byte[]>> parseOnlyCurrentProxyForPanel(ProxyModel currentProxy, byte[] payload) {
-        List<byte[]> requests = parseRequestsForProxyRaw(currentProxy.getParserSettings(), payload);
         List<List<byte[]>> groups = new ArrayList<>();
-        if (!requests.isEmpty()) {
-            groups.add(requests);
+        
+        // Client proxy should never parse - just return the raw payload
+        if (currentProxy.isClient()) {
+            List<byte[]> rawRequest = new ArrayList<>();
+            rawRequest.add(payload);
+            groups.add(rawRequest);
+        } else {
+            List<byte[]> requests = parseRequestsForProxyRaw(currentProxy.getParserSettings(), payload);
+            if (!requests.isEmpty()) {
+                groups.add(requests);
+            }
         }
         return groups;
     }
@@ -24,30 +33,56 @@ public class ParserChainRunner {
             byte[] payload,
             NetworkController networkController
     ) {
-        List<ProxyModel> chain = networkController.getConnectionPathToClient(currentProxy.getId());
-        if (chain == null) chain = new ArrayList<>();
+        // Find the client proxy to start from
+        ProxyModel clientProxy = null;
+        for (ProxyModel proxy : networkController.getModel().getProxies()) {
+            if (proxy.isClient()) {
+                clientProxy = proxy;
+                break;
+            }
+        }
+        
+        if (clientProxy == null) {
+            // No client proxy found, parse directly
+            List<List<byte[]>> groups = new ArrayList<>();
+            List<byte[]> requests = parseRequestsForProxyRaw(currentProxy.getParserSettings(), payload);
+            if (!requests.isEmpty()) {
+                groups.add(requests);
+            }
+            return groups;
+        }
 
-        List<byte[]> currentGroup = new ArrayList<>();
-        currentGroup.add(payload);
-
-        for (int i = 0; i < chain.size(); i++) {
-            ProxyModel proxy = chain.get(i);
+        // BFS to process all paths from client
+        // Map: proxyId -> list of byte arrays (requests) that reached this proxy
+        Map<String, List<byte[]>> proxyPayloads = new HashMap<>();
+        proxyPayloads.put(clientProxy.getId(), Arrays.asList(payload));
+        
+        // Queue for BFS: contains proxy IDs to process
+        Queue<String> toProcess = new LinkedList<>();
+        toProcess.add(clientProxy.getId());
+        Set<String> processed = new HashSet<>();
+        
+        while (!toProcess.isEmpty()) {
+            String proxyId = toProcess.poll();
+            if (processed.contains(proxyId)) continue;
+            processed.add(proxyId);
             
-            // Get all forward connections for this proxy (excluding client)
-            List<ProxyModel> forwardConnections = networkController.getDirectConnections(proxy.getId())
+            ProxyModel proxy = networkController.getModel().getProxy(proxyId);
+            if (proxy == null) continue;
+            
+            List<byte[]> payloadsForThisProxy = proxyPayloads.get(proxyId);
+            if (payloadsForThisProxy == null || payloadsForThisProxy.isEmpty()) continue;
+            
+            // Get forward connections (excluding client)
+            List<ProxyModel> forwardConnections = networkController.getDirectConnections(proxyId)
                 .stream()
                 .filter(p -> !p.isClient())
                 .collect(Collectors.toList());
             
-            // Remove connections that lead back towards client (to avoid loops)
-            if (i > 0) {
-                ProxyModel previousProxy = chain.get(i - 1);
-                forwardConnections.removeIf(p -> p.getId().equals(previousProxy.getId()));
-            }
+            if (forwardConnections.isEmpty()) continue;
             
+            // Check if proxy has enabled rules
             List<LoadBalancingRule> rules = proxy.getParserSettings().getLoadBalancingRules();
-            
-            // Check if there are enabled rules
             boolean hasEnabledRules = false;
             if (rules != null) {
                 for (LoadBalancingRule rule : rules) {
@@ -57,42 +92,121 @@ public class ParserChainRunner {
                     }
                 }
             }
-
-            List<byte[]> nextGroup = new ArrayList<>();
-            for (byte[] data : currentGroup) {
-                List<byte[]> validRequests = parseValidRequestsForProxyRaw(proxy.getParserSettings(), data);
-
+            
+            // Process each payload through this proxy
+            for (byte[] data : payloadsForThisProxy) {
+                List<byte[]> allRequests;
+                
+                // Client doesn't parse - it just forwards the raw payload
+                if (proxy.isClient()) {
+                    allRequests = Arrays.asList(data);
+                } else {
+                    // Parse requests but DON'T forward incomplete for intermediate proxies
+                    allRequests = parseRequestsForProxyRaw(proxy.getParserSettings(), data, false);
+                }
+                
                 if (forwardConnections.size() == 1 && !hasEnabledRules) {
-                    // Single forward connection and no rules: forward everything to that connection
-                    nextGroup.addAll(validRequests);
-                } else if (forwardConnections.size() > 1 || hasEnabledRules) {
-                    // Multiple connections or has rules: use rules to determine forwarding
-                    for (byte[] req : validRequests) {
-                        // Check rules against all possible forward connections
-                        for (ProxyModel forwardProxy : forwardConnections) {
-                            if (!hasEnabledRules || matchesForwardingRule(rules, req, forwardProxy.getId())) {
-                                nextGroup.add(req);
-                                break; // Forward to first matching proxy only
+                    // Single forward connection and no rules: forward everything
+                    ProxyModel nextProxy = forwardConnections.get(0);
+                    // Only add if not already processed or queued to prevent cycles
+                    if (!processed.contains(nextProxy.getId()) && !toProcess.contains(nextProxy.getId())) {
+                        proxyPayloads.computeIfAbsent(nextProxy.getId(), k -> new ArrayList<>())
+                                    .addAll(allRequests);
+                        toProcess.add(nextProxy.getId());
+                    }
+                } else if (hasEnabledRules) {
+                    // Has rules: check each request against rules
+                    for (byte[] req : allRequests) {
+                        boolean forwarded = false;
+                        
+                        // Check rules for this request
+                        for (LoadBalancingRule rule : rules) {
+                            if (!rule.isEnabled()) continue;
+                            String targetProxyId = rule.getForwardToProxyId();
+                            if (targetProxyId == null) continue;
+                            
+                            // Check if target is in forward connections
+                            ProxyModel targetProxy = forwardConnections.stream()
+                                .filter(p -> p.getId().equals(targetProxyId))
+                                .findFirst()
+                                .orElse(null);
+                            
+                            if (targetProxy != null && ruleMatchesRequest(rule, req)) {
+                                // Only add if not already processed or queued to prevent cycles
+                                if (!processed.contains(targetProxyId) && !toProcess.contains(targetProxyId)) {
+                                    proxyPayloads.computeIfAbsent(targetProxyId, k -> new ArrayList<>())
+                                                .add(req);
+                                    toProcess.add(targetProxyId);
+                                }
+                                forwarded = true;
+                                break; // First matching rule wins
                             }
                         }
+                        
+                        // If no rule matched, don't forward (when rules are enabled)
+                    }
+                } else if (forwardConnections.size() > 1) {
+                    // Multiple connections but no rules: this is likely a configuration error
+                    // Forward to first connection only to avoid duplication
+                    ProxyModel nextProxy = forwardConnections.get(0);
+                    // Only add if not already processed or queued to prevent cycles
+                    if (!processed.contains(nextProxy.getId()) && !toProcess.contains(nextProxy.getId())) {
+                        proxyPayloads.computeIfAbsent(nextProxy.getId(), k -> new ArrayList<>())
+                                    .addAll(allRequests);
+                        toProcess.add(nextProxy.getId());
                     }
                 }
-                // If forwardConnections.size() == 0, nothing is forwarded (dead end)
             }
-            currentGroup = nextGroup;
         }
-
+        
+        // Get the payloads that reached the target proxy
+        List<byte[]> targetPayloads = proxyPayloads.getOrDefault(currentProxy.getId(), new ArrayList<>());
+        
+        // Parse the final requests for display (unless it's the client proxy)
         List<List<byte[]>> finalGroups = new ArrayList<>();
-        for (byte[] data : currentGroup) {
-            List<byte[]> requests = parseRequestsForProxyRaw(currentProxy.getParserSettings(), data);
-            finalGroups.add(requests);
+        if (currentProxy.isClient()) {
+            // Client proxy should never parse - just return the raw payloads
+            for (byte[] data : targetPayloads) {
+                List<byte[]> rawGroup = new ArrayList<>();
+                rawGroup.add(data);
+                finalGroups.add(rawGroup);
+            }
+        } else {
+            // Non-client proxies: concatenate all payloads to allow cross-pipeline completion
+            if (!targetPayloads.isEmpty()) {
+                // Calculate total size
+                int totalSize = 0;
+                for (byte[] targetPayload : targetPayloads) {
+                    totalSize += targetPayload.length;
+                }
+                
+                // Concatenate all payloads into one continuous stream
+                byte[] concatenatedData = new byte[totalSize];
+                int offset = 0;
+                for (byte[] targetPayload : targetPayloads) {
+                    System.arraycopy(targetPayload, 0, concatenatedData, offset, targetPayload.length);
+                    offset += targetPayload.length;
+                }
+                
+                // Parse the concatenated data as one continuous stream
+                List<byte[]> requests = parseRequestsForProxyRaw(currentProxy.getParserSettings(), concatenatedData, false);
+                if (!requests.isEmpty()) {
+                    finalGroups.add(requests);
+                }
+            }
         }
+        
         return finalGroups;
     }
 
 
 
     public static List<byte[]> parseRequestsForProxyRaw(HttpParserModel model, byte[] data) {
+        return parseRequestsForProxyRaw(model, data, true);
+    }
+    
+    // Internal method with option to include incomplete requests (for testing) or exclude them (for forwarding)
+    private static List<byte[]> parseRequestsForProxyRaw(HttpParserModel model, byte[] data, boolean includeIncomplete) {
         List<byte[]> results = new ArrayList<>();
         byte[] remaining = data;
 
@@ -110,7 +224,13 @@ public class ParserChainRunner {
             String headerErr = split.getError();
 
             if (headersBytes.length == 0 && headerErr != null && headerErr.contains("Header/body delimiter not found")) {
-                results.add(concat(remaining, "<incomplete_request: incomplete headers block>".getBytes(StandardCharsets.ISO_8859_1)));
+                // Headers are incomplete
+                if (includeIncomplete) {
+                    // For testing: mark as incomplete
+                    String tag = "<incomplete_request:incomplete headers>";
+                    results.add(concat(tag.getBytes(StandardCharsets.ISO_8859_1), remaining));
+                }
+                // Stop processing this stream - the next data concatenation should complete it
                 break;
             }
             if (headersBytes.length == 0 || (headerErr != null && !headerErr.contains("Header/body delimiter not found"))) {
@@ -194,20 +314,22 @@ public class ParserChainRunner {
                 }
 
                 String[] parts = ParserUtils.splitRequestLineSimultaneous(requestLine, requestLineDelimiters);
-                if (parts == null || parts.length != 3) {
+                if (parts == null || parts.length != 5) {
                     requestLineError = true;
                     requestLineErrorMsg = "Invalid request line: could not split into exactly 3 parts";
                 } else {
                     method = parts[0];
                     uri = parts[1];
                     version = parts[2];
+                    String delimiter1 = parts[3];
+                    String delimiter2 = parts[4];
 
                     if (model.isRewriteMethodEnabled()) {
                         String from = model.getFromMethod();
                         String to = model.getToMethod();
                         if (method != null && from != null && !from.isEmpty()
                                 && to != null && !to.isEmpty()
-                                && method.equalsIgnoreCase(from)) {
+                                && method.equals(from)) {
                             method = to;
                         }
                     }
@@ -242,7 +364,12 @@ public class ParserChainRunner {
                         switch (model.getForcedHttpVersion()) {
                             case HTTP_1_0: version = "HTTP/1.0"; break;
                             case HTTP_1_1: version = "HTTP/1.1"; break;
-                            case AUTO: break;
+                            case AUTO: 
+                                String customVersion = model.getCustomHttpVersion();
+                                if (customVersion != null && !customVersion.isEmpty()) {
+                                    version = customVersion;
+                                }
+                                break;
                         }
                     }
                     String oldEnding = "";
@@ -254,7 +381,8 @@ public class ParserChainRunner {
                             break;
                         }
                     }
-                    headerLines.set(0, method + " " + uri + " " + version + oldEnding);
+                    // Use original delimiters instead of hardcoded spaces
+                    headerLines.set(0, method + delimiter1 + uri + delimiter2 + version + oldEnding);
                 }
             } else {
                 requestLineError = true;
@@ -271,18 +399,128 @@ public class ParserChainRunner {
             byte[] currentBody = rest;
             byte[] buffer = rest;
 
-            MessageLengthHeaderResult lenResult = ParserUtils.getMessageBodyByHeaderRules(model, currentHeaderLines, currentBody);
+            // Check if we should preserve original chunked encoding
+            boolean preserveChunked = false;
+            boolean isChunked = false;
+            
+            // Check if this is a chunked request
+            for (String line : currentHeaderLines) {
+                if (line.toLowerCase().contains("transfer-encoding") && line.toLowerCase().contains("chunked")) {
+                    isChunked = true;
+                    if (model.getOutputBodyEncoding() == HttpParserModel.MessageLenBodyEncoding.DONT_MODIFY) {
+                        preserveChunked = true;
+                    }
+                    break;
+                }
+            }
+            
+            MessageLengthHeaderResult lenResult;
+            byte[] originalChunkedBody = null;
+            
+            if (preserveChunked) {
+                // For DONT_MODIFY with chunked, we need to preserve the original chunked body
+                // Calculate how much of the original body contains the chunked data
+                lenResult = ParserUtils.getMessageBodyByHeaderRules(model, currentHeaderLines, currentBody);
+                if (lenResult != null && lenResult.getError() == null) {
+                    // Calculate the original chunked body size by finding where remaining starts
+                    int chunkedBodySize = currentBody.length - lenResult.getRemaining().length;
+                    originalChunkedBody = new byte[chunkedBodySize];
+                    System.arraycopy(currentBody, 0, originalChunkedBody, 0, chunkedBodySize);
+                }
+            } else {
+                lenResult = ParserUtils.getMessageBodyByHeaderRules(model, currentHeaderLines, currentBody);
+            }
 
             if (lenResult != null && lenResult.getIncompleteBodyBytes() > 0 && lenResult.getChunkedIncompleteTag() == null) {
-                byte[] partial = Arrays.copyOfRange(remaining, 0, headersBytes.length + Math.min(lenResult.getBody().length, currentBody.length));
-                String tag = "<incomplete_request: " + lenResult.getIncompleteBodyBytes() + " body bytes missing>";
-                results.add(concat(partial, tag.getBytes(StandardCharsets.ISO_8859_1)));
-                break;
+                // Calculate how much data belongs to this incomplete request
+                int consumedBytes = headersBytes.length + lenResult.getBody().length;
+                
+                // Check if we can complete this request with the remaining data
+                int missingBytes = lenResult.getIncompleteBodyBytes();
+                byte[] afterBody = lenResult.getRemaining();
+                
+                if (afterBody.length >= missingBytes) {
+                    // We have enough data to complete the request!
+                    byte[] completedBody = new byte[lenResult.getBody().length + missingBytes];
+                    System.arraycopy(lenResult.getBody(), 0, completedBody, 0, lenResult.getBody().length);
+                    System.arraycopy(afterBody, 0, completedBody, lenResult.getBody().length, missingBytes);
+                    
+                    // Update lenResult with the completed body
+                    lenResult = new MessageLengthHeaderResult(
+                        currentHeaderLines,  // headerLines
+                        completedBody,       // body
+                        Arrays.copyOfRange(afterBody, missingBytes, afterBody.length), // remaining
+                        null,               // error
+                        0,                  // incompleteBodyBytes (now complete)
+                        null                // chunkedIncompleteTag
+                    );
+                    // Continue processing with the completed request
+                } else {
+                    // Incomplete request
+                    if (includeIncomplete) {
+                        // For testing: mark as incomplete with details about missing bytes
+                        String incompleteTag = "<incomplete_request:" + missingBytes + " body bytes missing>";
+                        byte[] tagBytes = incompleteTag.getBytes(StandardCharsets.ISO_8859_1);
+                        
+                        // Build the header block
+                        StringBuilder headerBlock = new StringBuilder();
+                        for (String line : currentHeaderLines) {
+                            headerBlock.append(line);
+                        }
+                        byte[] headerBytes = headerBlock.toString().getBytes(StandardCharsets.ISO_8859_1);
+                        
+                        // Build the incomplete request with tag
+                        ByteArrayOutputStream incompleteRequest = new ByteArrayOutputStream();
+                        try {
+                            incompleteRequest.write(tagBytes);
+                            incompleteRequest.write(headerBytes);
+                            incompleteRequest.write(lenResult.getBody());
+                        } catch (Exception e) {
+                            // Shouldn't happen with ByteArrayOutputStream
+                        }
+                        results.add(incompleteRequest.toByteArray());
+                    }
+                    
+                    // Try to find more complete requests after it
+                    byte[] skipData = lenResult.getRemaining();
+                    
+                    if (skipData.length > 0) {
+                        // Try to find the next valid request start
+                        // Look for a valid HTTP method in the remaining data
+                        String remainingStr = new String(skipData, StandardCharsets.ISO_8859_1);
+                        
+                        // Common HTTP methods to look for
+                        String[] httpMethods = {"GET ", "POST ", "PUT ", "DELETE ", "HEAD ", "OPTIONS ", "PATCH ", "CONNECT ", "TRACE "};
+                        int nextRequestStart = -1;
+                        
+                        for (String httpMethod : httpMethods) {
+                            int idx = remainingStr.indexOf(httpMethod);
+                            if (idx >= 0 && (nextRequestStart == -1 || idx < nextRequestStart)) {
+                                nextRequestStart = idx;
+                            }
+                        }
+                        
+                        if (nextRequestStart > 0) {
+                            // Found a potential next request, skip to it
+                            remaining = Arrays.copyOfRange(skipData, nextRequestStart, skipData.length);
+                            continue;
+                        } else if (nextRequestStart == 0) {
+                            // Next request starts immediately
+                            remaining = skipData;
+                            continue;
+                        }
+                    }
+                    
+                    // No more data to process
+                    break;
+                }
             }
-            if (lenResult != null && lenResult.getChunkedIncompleteTag() != null) {
-                byte[] partial = Arrays.copyOfRange(remaining, 0, headersBytes.length + lenResult.getBody().length);
+            // Don't treat chunked encoding as incomplete if we successfully parsed the body
+            if (lenResult != null && lenResult.getChunkedIncompleteTag() != null && lenResult.getBody().length == 0) {
+                // Only mark as incomplete if we couldn't parse any body
+                byte[] partial = Arrays.copyOfRange(remaining, 0, headersBytes.length);
                 String tag = "<incomplete_request: chunks incomplete>";
-                results.add(concat(tag.getBytes(StandardCharsets.ISO_8859_1), remaining));
+                results.add(concat(partial, tag.getBytes(StandardCharsets.ISO_8859_1)));
                 break;
             }
             if (lenResult.getError() != null) {
@@ -306,6 +544,15 @@ public class ParserChainRunner {
                 }
             }
 
+            // Apply output body encoding transformation
+            if (model.getOutputBodyEncoding() != null && model.getOutputBodyEncoding() != HttpParserModel.MessageLenBodyEncoding.DONT_MODIFY) {
+                afterJsHeaderLines = applyOutputBodyEncoding(model, afterJsHeaderLines, afterJsBody, headerLineEndings);
+                afterJsBody = transformBodyEncoding(model, afterJsBody);
+            } else if (preserveChunked && originalChunkedBody != null) {
+                // Use the original chunked body instead of the decoded body
+                afterJsBody = originalChunkedBody;
+            }
+            
             // --- Build header block as-is (no extra endings), preserving all endings and structure
             StringBuilder headerBlock = new StringBuilder();
             for (String line : afterJsHeaderLines) {
@@ -445,19 +692,21 @@ public class ParserChainRunner {
                     }
                 }
                 String[] parts = ParserUtils.splitRequestLineSimultaneous(requestLine, requestLineDelimiters);
-                if (parts == null || parts.length != 3) {
+                if (parts == null || parts.length != 5) {
                     requestLineError = true;
                 } else {
                     method = parts[0];
                     uri = parts[1];
                     version = parts[2];
+                    String delimiter1 = parts[3];
+                    String delimiter2 = parts[4];
 
                     if (model.isRewriteMethodEnabled()) {
                         String from = model.getFromMethod();
                         String to = model.getToMethod();
                         if (method != null && from != null && !from.isEmpty()
                                 && to != null && !to.isEmpty()
-                                && method.equalsIgnoreCase(from)) {
+                                && method.equals(from)) {
                             method = to;
                         }
                     }
@@ -490,7 +739,12 @@ public class ParserChainRunner {
                         switch (model.getForcedHttpVersion()) {
                             case HTTP_1_0: version = "HTTP/1.0"; break;
                             case HTTP_1_1: version = "HTTP/1.1"; break;
-                            case AUTO: break;
+                            case AUTO: 
+                                String customVersion = model.getCustomHttpVersion();
+                                if (customVersion != null && !customVersion.isEmpty()) {
+                                    version = customVersion;
+                                }
+                                break;
                         }
                     }
                     String oldEnding = "";
@@ -502,7 +756,7 @@ public class ParserChainRunner {
                             break;
                         }
                     }
-                    headerLines.set(0, method + " " + uri + " " + version + oldEnding);
+                    headerLines.set(0, method + delimiter1 + uri + delimiter2 + version + oldEnding);
                 }
             } else {
                 requestLineError = true;
@@ -513,10 +767,40 @@ public class ParserChainRunner {
             byte[] currentBody = rest;
             byte[] buffer = rest;
 
-            MessageLengthHeaderResult lenResult = ParserUtils.getMessageBodyByHeaderRules(model, currentHeaderLines, currentBody);
+            // Check if we should preserve original chunked encoding
+            boolean preserveChunked = false;
+            boolean isChunked = false;
+            
+            // Check if this is a chunked request
+            for (String line : currentHeaderLines) {
+                if (line.toLowerCase().contains("transfer-encoding") && line.toLowerCase().contains("chunked")) {
+                    isChunked = true;
+                    if (model.getOutputBodyEncoding() == HttpParserModel.MessageLenBodyEncoding.DONT_MODIFY) {
+                        preserveChunked = true;
+                    }
+                    break;
+                }
+            }
+            
+            MessageLengthHeaderResult lenResult;
+            byte[] originalChunkedBody = null;
+            
+            if (preserveChunked) {
+                // For DONT_MODIFY with chunked, we need to preserve the original chunked body
+                lenResult = ParserUtils.getMessageBodyByHeaderRules(model, currentHeaderLines, currentBody);
+                if (lenResult != null && lenResult.getError() == null) {
+                    // Calculate the original chunked body size
+                    int chunkedBodySize = currentBody.length - lenResult.getRemaining().length;
+                    originalChunkedBody = new byte[chunkedBodySize];
+                    System.arraycopy(currentBody, 0, originalChunkedBody, 0, chunkedBodySize);
+                }
+            } else {
+                lenResult = ParserUtils.getMessageBodyByHeaderRules(model, currentHeaderLines, currentBody);
+            }
 
             if (lenResult != null && (lenResult.getIncompleteBodyBytes() > 0 && lenResult.getChunkedIncompleteTag() == null)) break;
-            if (lenResult != null && lenResult.getChunkedIncompleteTag() != null) break;
+            // Only break if chunked parsing failed (no body parsed)
+            if (lenResult != null && lenResult.getChunkedIncompleteTag() != null && lenResult.getBody().length == 0) break;
             if (lenResult.getError() != null) break;
 
             List<String> afterJsHeaderLines = currentHeaderLines;
@@ -530,6 +814,15 @@ public class ParserChainRunner {
                 } catch (Exception ex) {
                     break;
                 }
+            }
+            
+            // Apply output body encoding transformation or preserve chunked
+            if (model.getOutputBodyEncoding() != null && model.getOutputBodyEncoding() != HttpParserModel.MessageLenBodyEncoding.DONT_MODIFY) {
+                afterJsHeaderLines = applyOutputBodyEncoding(model, afterJsHeaderLines, afterJsBody, headerLineEndings);
+                afterJsBody = transformBodyEncoding(model, afterJsBody);
+            } else if (preserveChunked && originalChunkedBody != null) {
+                // Use the original chunked body instead of the decoded body
+                afterJsBody = originalChunkedBody;
             }
 
             StringBuilder headerBlock = new StringBuilder();
@@ -603,7 +896,7 @@ public class ParserChainRunner {
                     }
                     String continuation = line.substring(1);
 
-                    folded.add(prevNoEnding + continuation);
+                    folded.add(prevNoEnding + " " + continuation);
                 } else {
                     folded.add(line);
                 }
@@ -634,6 +927,83 @@ public class ParserChainRunner {
         System.arraycopy(a, 0, result, 0, a.length);
         System.arraycopy(b, 0, result, a.length, b.length);
         return result;
+    }
+    
+    private static List<String> applyOutputBodyEncoding(HttpParserModel model, List<String> headerLines, 
+                                                        byte[] body, List<String> headerLineEndings) {
+        List<String> modifiedHeaders = new ArrayList<>();
+        String lineEnding = getBestHeaderLineEnding(headerLineEndings);
+        boolean hasTransferEncoding = false;
+        boolean hasContentLength = false;
+        
+        // Copy headers, removing conflicting headers based on output encoding
+        for (String line : headerLines) {
+            String lowerLine = line.toLowerCase();
+            if (lowerLine.startsWith("transfer-encoding:")) {
+                hasTransferEncoding = true;
+                if (model.getOutputBodyEncoding() == HttpParserModel.MessageLenBodyEncoding.FORCE_CL_HEADER) {
+                    continue; // Skip Transfer-Encoding when forcing Content-Length
+                }
+            } else if (lowerLine.startsWith("content-length:")) {
+                hasContentLength = true;
+                if (model.getOutputBodyEncoding() == HttpParserModel.MessageLenBodyEncoding.FORCE_CHUNKED) {
+                    continue; // Skip Content-Length when forcing chunked
+                }
+            }
+            modifiedHeaders.add(line);
+        }
+        
+        // Add appropriate header based on output encoding
+        if (model.getOutputBodyEncoding() == HttpParserModel.MessageLenBodyEncoding.FORCE_CHUNKED) {
+            if (!hasTransferEncoding) {
+                // Find position to insert (before empty line)
+                int insertPos = modifiedHeaders.size();
+                for (int i = modifiedHeaders.size() - 1; i >= 0; i--) {
+                    if (modifiedHeaders.get(i).trim().isEmpty()) {
+                        insertPos = i;
+                        break;
+                    }
+                }
+                modifiedHeaders.add(insertPos, "Transfer-Encoding: chunked" + lineEnding);
+            }
+        } else if (model.getOutputBodyEncoding() == HttpParserModel.MessageLenBodyEncoding.FORCE_CL_HEADER) {
+            if (!hasContentLength) {
+                // Find position to insert (before empty line)
+                int insertPos = modifiedHeaders.size();
+                for (int i = modifiedHeaders.size() - 1; i >= 0; i--) {
+                    if (modifiedHeaders.get(i).trim().isEmpty()) {
+                        insertPos = i;
+                        break;
+                    }
+                }
+                modifiedHeaders.add(insertPos, "Content-Length: " + body.length + lineEnding);
+            }
+        }
+        
+        return modifiedHeaders;
+    }
+    
+    private static byte[] transformBodyEncoding(HttpParserModel model, byte[] body) {
+        if (model.getOutputBodyEncoding() == HttpParserModel.MessageLenBodyEncoding.FORCE_CHUNKED) {
+            // Convert to chunked encoding
+            ByteArrayOutputStream chunked = new ByteArrayOutputStream();
+            try {
+                // Write body as single chunk
+                String sizeHex = Integer.toHexString(body.length);
+                chunked.write(sizeHex.getBytes(StandardCharsets.ISO_8859_1));
+                chunked.write("\r\n".getBytes(StandardCharsets.ISO_8859_1));
+                chunked.write(body);
+                chunked.write("\r\n".getBytes(StandardCharsets.ISO_8859_1));
+                // Write final chunk
+                chunked.write("0\r\n\r\n".getBytes(StandardCharsets.ISO_8859_1));
+                return chunked.toByteArray();
+            } catch (Exception e) {
+                return body; // Return original on error
+            }
+        }
+        // For FORCE_CL_HEADER or DONT_MODIFY, return body as-is
+        // (body is already decoded from chunked if it was chunked)
+        return body;
     }
     
     private static class FirewallCheckResult {

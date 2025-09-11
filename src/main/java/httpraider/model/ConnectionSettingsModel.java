@@ -12,7 +12,7 @@ public class ConnectionSettingsModel implements Serializable {
     private boolean tls;
 
     public ConnectionSettingsModel() {
-        host="www.target.com";
+        host="";
         port=443;
         tls=true;
     }

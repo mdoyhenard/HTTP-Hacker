@@ -66,6 +66,7 @@ public class HttpParserModel implements Serializable {
         addHeaderRules = new ArrayList<>();
 
         bodyLenHeaderRules = new ArrayList<>();
+        // Transfer-Encoding takes precedence over Content-Length per RFC 7230
         bodyLenHeaderRules.add(new BodyLenHeaderRule("Transfer-Encoding: chunked", true, DuplicateHandling.LAST));
         bodyLenHeaderRules.add(new BodyLenHeaderRule("Content-Length: ", false, DuplicateHandling.FIRST));
 
