@@ -1,46 +1,35 @@
-# ============================================
-# IntelliJ IDEA
-# ============================================
+# === IntelliJ IDEA ===
 .idea/
 *.iml
 *.iws
 out/
 
-# ============================================
-# Gradle
-# ============================================
+# === Gradle ===
 .gradle/
-build/            # ⚠️ normalmente se ignora, pero lo dejo para que subas builds/ejecutables
-!build/libs/*.jar # explícitamente permitir JARs compilados
-!build/distributions/**
-!build/exe/**
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
-# ============================================
-# Java
-# ============================================
+# === Java ===
 *.class
 *.log
+*.ctxt
+hs_err_pid*
 
-# ============================================
-# OS temporaries
-# ============================================
+# === OS garbage ===
 .DS_Store
 Thumbs.db
 
-# ============================================
-# Archivos sensibles (NO versionar nunca)
-# ============================================
-*.key
+# === Sensitive files ===
 *.pem
+*.key
 *.crt
-*.cer
-*.p12
 *.der
 id_rsa
-id_dsa
-id_ecdsa
+id_rsa.pub
 id_ed25519
-*.pub
-secrets.*
-.env
+id_ed25519.pub
+*.p12
+*.jks
+*.keystore
+secrets/
 
