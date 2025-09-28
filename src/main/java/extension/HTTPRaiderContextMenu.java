@@ -18,6 +18,7 @@ public class HTTPRaiderContextMenu implements ContextMenuItemsProvider {
 
     private final ApplicationController appController;
 
+
     public HTTPRaiderContextMenu(ApplicationController appController) {
         this.appController= appController;
     }

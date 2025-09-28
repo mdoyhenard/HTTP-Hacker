@@ -28,7 +28,8 @@ public class OptimizedMutationRunner {
         this.maxCombinationSize = maxCombinationSize;
         this.enableSuppression = enableSuppression;
         this.timeoutSeconds = timeoutSeconds;
-        this.executor = Executors.newFixedThreadPool(5); // Parallel execution
+        // Increase thread pool size to prevent deadlock and handle nested tasks
+        this.executor = Executors.newCachedThreadPool(); // Dynamic thread pool
         this.progressCallback = progressCallback != null ? progressCallback : s -> {};
     }
 
@@ -56,16 +57,21 @@ public class OptimizedMutationRunner {
                     HttpRequestResponse resp = null;
                     
                     try {
-                        // Use a separate thread with timeout for each request
-                        Future<HttpRequestResponse> requestFuture = executor.submit(() -> 
-                            api.http().sendRequest(mutated)
-                        );
-                        
-                        resp = requestFuture.get(timeoutSeconds, TimeUnit.SECONDS);
+                        // Create a separate executor for the timeout mechanism to avoid deadlock
+                        ExecutorService timeoutExecutor = Executors.newSingleThreadExecutor();
+                        try {
+                            Future<HttpRequestResponse> requestFuture = timeoutExecutor.submit(() -> 
+                                api.http().sendRequest(mutated)
+                            );
+                            
+                            resp = requestFuture.get(timeoutSeconds, TimeUnit.SECONDS);
+                        } finally {
+                            timeoutExecutor.shutdownNow();
+                        }
                     } catch (TimeoutException e) {
                         progressCallback.accept("Request timeout for: " + mset.describe());
                     } catch (Exception e) {
-                        // Ignore other exceptions
+                        progressCallback.accept("Request error for " + mset.describe() + ": " + e.getMessage());
                     }
                     
                     long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
@@ -89,15 +95,28 @@ public class OptimizedMutationRunner {
             futures.add(future);
         }
         
-        // Collect results
+        // Collect results with overall timeout
+        long overallTimeout = (long) timeoutSeconds * allSets.size() * sampleCount + 60; // Add 60 seconds buffer
+        long startTime = System.currentTimeMillis();
+        
         for (Future<MutationRunResult> future : futures) {
             try {
-                MutationRunResult result = future.get();
+                long remainingTime = overallTimeout - (System.currentTimeMillis() - startTime) / 1000;
+                if (remainingTime <= 0) {
+                    progressCallback.accept("Overall timeout reached, collecting available results...");
+                    future.cancel(true);
+                    continue;
+                }
+                
+                MutationRunResult result = future.get(remainingTime, TimeUnit.SECONDS);
                 if (result != null) {
                     results.add(result);
                 }
+            } catch (TimeoutException e) {
+                progressCallback.accept("Mutation timed out, skipping...");
+                future.cancel(true);
             } catch (Exception e) {
-                // Ignore failed mutations
+                // Ignore other failed mutations
             }
         }
         

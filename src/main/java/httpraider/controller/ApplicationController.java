@@ -36,7 +36,7 @@ public final class ApplicationController {
 
         HTTPRaiderContextMenu contextMenu = new HTTPRaiderContextMenu(this);
         HTTPRaiderExtension.API.userInterface().registerContextMenuItemsProvider(contextMenu);
-        HTTPRaiderExtension.API.userInterface().registerSuiteTab("HTTP Raider", rootView);
+        HTTPRaiderExtension.API.userInterface().registerSuiteTab("HTTP Hacker", rootView);
         HTTPRaiderExtension.API.extension().registerUnloadingHandler(this::saveAll);
 
         loadSaved();
